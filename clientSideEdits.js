@@ -106,7 +106,6 @@ function updatePlayers() {
 // modifying the ban function to ensure you won't get banned
 obfOb1 = Deobfuscator.object(ig.game,'mnt_P',true)
 banFunc = Deobfuscator.function(ig.game[obfOb1], '/j/u/p/"', true);
-ig.game.errorManager.kicked = function(){};
 ig.game[obfOb1][banFunc] = function(){};
 ig.game.errorManager.kicked = function(){};
 ig.game.isFullAccount = true;
