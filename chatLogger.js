@@ -109,6 +109,8 @@ async function logChat() {
     playerInfo = Deobfuscator.object(ig.game.player,'addItem',true);
     chat = Deobfuscator.keyBetween(ig.game.brainManager[firstObfFunc],`d<c.${playerInfo}.`,'.length;d++');
     content = Deobfuscator.keyBetween(ig.game.brainManager[firstObfFunc],'f={};f.content=e.',';f.type=this.enumType.speech;f.fromId');
+    ig.game.nonLoggedInChatIfEditorAround = true;
+    ml.Misc.thereIsAnEditorAround = function(){return true}
     setInterval(() => {
         scrollToBottom(theElement);
         for (let playerIndex = 0; playerIndex < ig.game[entities].player.length; playerIndex++) {
