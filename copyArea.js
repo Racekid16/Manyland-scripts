@@ -22,7 +22,10 @@ async function init() {
     areaType = Deobfuscator.keyBetween(obfVar.mnt_P,"{p:b.",",a:b.c");
     itemEquip = Deobfuscator.function(ig.game.attachmentManager,'(c);!e&&!a.O',true);
     maxVelFunc = Deobfuscator.function(ig.game.player, '.x;this.maxVel.y=this.', true);
+    thingBehindPlayer = Deobfuscator.keyBetween(ig.game.player.somethingPushingUpBehindPlayer,'return this.','&&this.O');
+    collideFunc = Deobfuscator.function(ig.Entity,'&&b instanceof EntityCrumbling||b.',true);
     originalVelFunc = ig.game.player[maxVelFunc];
+    originalCollideFunc = ig.Entity[collideFunc];
     // can do ig.game.area.currentArea = (areaId) if you want to scan an area without people seeing you
     // and do ig.game.area.currentArea = originalArea to change it back
     // if you do this and the area is the inner or an outer ring, also do ig.game.area[areaType] = 1 into console.
@@ -31,10 +34,10 @@ async function init() {
     ig.game.player.kill = function(){};
     edgeArr = []; edgeArrOrganizedByY = []; placeArr = []; areaSize = [];
     toggling = false; currentlyScanning = false;
-    callCount = 0; minY = Infinity; maxY = -Infinity; height = 0; startX = 0; startY = 0; 
-    bottomLeftXOffset = 0; bottomRightXOffset = 0; topRightXOffset = 0; centerXOffset = 0;
-    moveWait = 25; 
-    blockId = ""; blockRotaiton = 0; blockFlip = 0;
+    minX = Infinity; maxX = -Infinity; minY = Infinity; maxY = -Infinity; 
+    firstRowIndex = null; lastRowIndex = null;
+    sectorNumber = 0; callCount = 0; 
+    sectorWidth = 10; moveWait = 15;
     suggestedPos = "";
     // removes the ad bar
     $('div').remove();
@@ -46,6 +49,8 @@ async function init() {
         if (wantsFeedback) {
             ig.game.player.say("vertex added to shape!");
         }
+        if (x > maxX) {maxX = x;}
+        if (x < minX) {minX = x;}
         if (y > maxY) {maxY = y;}
         if (y < minY) {minY = y;}
     };
@@ -142,9 +147,9 @@ async function init() {
                 // in this case centerX and centerY are not really the center of the rectangle, just didn't wanna make a new variable.
                 centerX = playerPos.x;
                 centerY = playerPos.y;
-                addVertex(centerX, centerY - areaSize[1], false);
-                addVertex(centerX + areaSize[0], centerY - areaSize[1], false);
-                addVertex(centerX + areaSize[0], centerY, false);
+                addVertex(centerX, centerY - (areaSize[1] - 1), false);
+                addVertex(centerX + (areaSize[0] - 1), centerY - (areaSize[1] - 1), false);
+                addVertex(centerX + (areaSize[0] - 1), centerY, false);
                 addVertex(centerX, centerY, false);
                 createEdges();
                 ig.game.player.say("rectangle created! now scanning.");
@@ -156,6 +161,7 @@ async function init() {
 
 function createEdges() {
     height = maxY - minY + 1;
+    width = maxX - minX + 1;
     const numEdges = edgeArr.length;
     edgeArr.push(edgeArr[0]);
     // basically makes a line from each vertex to its next vertex
@@ -221,7 +227,7 @@ function organizeEdgeArr() {
 
 function calculateOffset() {
     // these calculations help you paste the area where you want it
-    startX = edgeArrOrganizedByY[0][1][0];
+    startX = minX;
     startY = edgeArrOrganizedByY[0][0];
     bottomLeftXOffset = startX - edgeArrOrganizedByY[edgeArrOrganizedByY.length - 1][1][0];
     bottomRightXOffset = startX - edgeArrOrganizedByY[edgeArrOrganizedByY.length - 1][1][edgeArrOrganizedByY[edgeArrOrganizedByY.length - 1][1].length - 1];
@@ -241,7 +247,7 @@ async function moveToStart() {
         this.maxVel.y = 0;
     };
     // prevents getting moved by solid dynamics/interactings/other things like that
-    ig.Entity.COLLIDES.FIXED = 0;
+    ig.Entity[collideFunc] = function(){};
     // prevents getting moved by interactings, transportings, and grabbing dynamics
     getWearable("62b5eba64b4994128421214a");
     ig.game.settings.glueWearable = true;
@@ -276,74 +282,251 @@ async function moveToStart() {
 
 async function scanArea() {
     currentlyScanning = true;
-    for (let i = 0; i < edgeArrOrganizedByY.length; i++) {
-        moveWait = 15;
-        ig.game.player.pos.y = edgeArrOrganizedByY[i][0] * 19;
-        if (i % 2 == 0) {
-            if (playerPos.x > edgeArrOrganizedByY[i][1][0] - 1) {
-                while (playerPos.x > edgeArrOrganizedByY[i][1][0] - 1) {
-                    ig.game.player.pos.x -= 19;
-                    await delay(moveWait);
+    sectorStartX = minX;
+    sectorStartX + sectorWidth - 1 > maxX ? sectorEndX = maxX : sectorEndX = sectorStartX + sectorWidth - 1;
+    //scanning here
+    while (sectorEndX <= maxX) {
+        rowNumber = 0;
+        // move player to the correct x coordinate
+        while (playerPos.x < sectorStartX) {
+            ig.game.player.pos.x += 19;
+            await delay(moveWait);
+        }
+        // traverse downward on these sectors
+        if (sectorNumber % 2 == 0) {
+            // iterating through edgeArrOrganizedByY to find topmost and bottommost rows with blocks in sector
+            for (i = 0; i < edgeArrOrganizedByY.length - 1; i++) {
+                firstElementInRow = edgeArrOrganizedByY[i][1][0];
+                lastElementInRow = edgeArrOrganizedByY[i][1][edgeArrOrganizedByY[i][1].length - 1];
+                if (lastElementInRow >= sectorStartX && firstElementInRow <= sectorEndX) {
+                    firstRowIndex = i;
+                    break;
                 }
-            } else if (playerPos.x < edgeArrOrganizedByY[i][1][0] - 1) {
-                while (playerPos.x < edgeArrOrganizedByY[i][1][0] - 1) {
-                    ig.game.player.pos.x += 19;
+            }
+            for (j = firstRowIndex; j < edgeArrOrganizedByY.length - 1; j++) {
+                firstElementInRow = edgeArrOrganizedByY[j][1][0];
+                lastElementInRow = edgeArrOrganizedByY[j][1][edgeArrOrganizedByY[j][1].length - 1];
+                if (lastElementInRow < sectorStartX || firstElementInRow > sectorEndX) {
+                    lastRowIndex = j - 1;
+                    break;
+                }
+            }
+            if (lastRowIndex == null) {
+                lastRowIndex = edgeArrOrganizedByY.length - 1;
+            }
+            // move player to the correct y coordinate
+            if (playerPos.y > edgeArrOrganizedByY[firstRowIndex][0]) {
+                while (playerPos.y > edgeArrOrganizedByY[firstRowIndex][0]) {
+                    ig.game.player.pos.y -= 19;
                     await delay(moveWait);
                 }
             } else {
-                await delay(moveWait);
-            }
-            for (let j = edgeArrOrganizedByY[i][1][0]; j <= edgeArrOrganizedByY[i][1][edgeArrOrganizedByY[i][1].length - 1]; j++) {
-                if (!currentlyScanning) {
-                    return;
+                while (playerPos.y < edgeArrOrganizedByY[firstRowIndex][0]) {
+                    ig.game.player.pos.y += 19;
+                    await delay(moveWait);
                 }
-                (edgeArrOrganizedByY[i][1][edgeArrOrganizedByY[i][1].length - 1] - j < 20 || j - edgeArrOrganizedByY[i][1][0] < 20) ? moveWait = 15 : moveWait = 25;
-                ig.game.player.pos.x = j * 19;
-                if (ig.game.player.thingToRightOfPlayer !== null) {
-                    blockId = ig.game.player.thingToRightOfPlayer.thing.id;
-                    blockRotation = ig.game.player.thingToRightOfPlayer.rotation;
-                    blockFlip = ig.game.player.thingToRightOfPlayer.flip;
-                    placeArr.push([j, edgeArrOrganizedByY[i][0], blockId, blockRotation, blockFlip]);
-                }
-                await delay(moveWait);
             }
+            currentRowIndex = firstRowIndex;
+            while (playerPos.y <= edgeArrOrganizedByY[lastRowIndex][0]) {
+                // go right
+                if (rowNumber % 2 == 0) {
+                    firstElementInRow = edgeArrOrganizedByY[currentRowIndex][1][0];
+                    lastElementInRow = edgeArrOrganizedByY[currentRowIndex][1][edgeArrOrganizedByY[currentRowIndex][1].length - 1];
+                    // find row start
+                    firstElementInRow <= sectorStartX ? rowStartX = sectorStartX : rowStartX = firstElementInRow;
+                    // find row end
+                    lastElementInRow >= sectorEndX ? rowEndX = sectorEndX : rowEndX = lastElementInRow;
+                    // move to row start
+                    if (playerPos.x < rowStartX) {
+                        while (playerPos.x < rowStartX) {
+                            ig.game.player.pos.x += 19;
+                            await delay(moveWait);
+                        }
+                    } else {
+                        while (playerPos.x > rowStartX) {
+                            ig.game.player.pos.x -= 19;
+                            await delay(moveWait);
+                        }
+                    }
+                    // move to row end and scan
+                    while (playerPos.x < rowEndX) {
+                        if (ig.game.player[thingBehindPlayer] !== null) {
+                            placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                        }
+                        ig.game.player.pos.x += 19;
+                        await delay(moveWait);
+                    }
+                // go left
+                } else {
+                    firstElementInRow = edgeArrOrganizedByY[currentRowIndex][1][0];
+                    lastElementInRow = edgeArrOrganizedByY[currentRowIndex][1][edgeArrOrganizedByY[currentRowIndex][1].length - 1];
+                    // find row start
+                    lastElementInRow >= sectorEndX ? rowStartX = sectorEndX : rowStartX = lastElementInRow;
+                    // find row end
+                    firstElementInRow <= sectorStartX ? rowEndX = sectorStartX : rowEndX = firstElementInRow;
+                    // move to row start
+                    if (playerPos.x < rowStartX) {
+                        while (playerPos.x < rowStartX) {
+                            ig.game.player.pos.x += 19;
+                            await delay(moveWait);
+                        }
+                    } else {
+                        while (playerPos.x > rowStartX) {
+                            ig.game.player.pos.x -= 19;
+                            await delay(moveWait);
+                        }
+                    }
+                    // move to row end and scan
+                    while (playerPos.x > rowEndX) {
+                        if (ig.game.player[thingBehindPlayer] !== null) {
+                            placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                        }
+                        ig.game.player.pos.x -= 19;
+                        await delay(moveWait);
+                    }
+                }
+                // move to next row
+                if (playerPos.y != edgeArrOrganizedByY[lastRowIndex][0]) {
+                    ig.game.player.pos.y += 19;
+                    currentRowIndex++;
+                    rowNumber++;
+                    if (ig.game.player[thingBehindPlayer] !== null) {
+                        placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                    }
+                    await delay(moveWait);
+                } else {
+                    if (ig.game.player[thingBehindPlayer] !== null) {
+                        placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                    }
+                    await delay(moveWait);
+                    break;
+                }
+            }
+        // else traverse upward on these sectors
         } else {
-            if (playerPos.x < edgeArrOrganizedByY[i][1][edgeArrOrganizedByY[i][1].length - 1] + 1) {
-                while (playerPos.x < edgeArrOrganizedByY[i][1][edgeArrOrganizedByY[i][1].length - 1] + 1) {
-                    ig.game.player.pos.x += 19;
-                    await delay(moveWait);
+            // iterating through edgeArrOrganizedByY to find topmost and bottommost rows with blocks in sector
+            for (i = edgeArrOrganizedByY.length - 1; i > 0; i--) {
+                firstElementInRow = edgeArrOrganizedByY[i][1][0];
+                lastElementInRow = edgeArrOrganizedByY[i][1][edgeArrOrganizedByY[i][1].length - 1];
+                if (lastElementInRow >= sectorStartX && firstElementInRow <= sectorEndX) {
+                    firstRowIndex = i;
+                    break;
                 }
-            } else if (playerPos.x > edgeArrOrganizedByY[i][1][edgeArrOrganizedByY[i][1].length - 1] + 1) {
-                while (playerPos.x > edgeArrOrganizedByY[i][1][edgeArrOrganizedByY[i][1].length - 1] + 1) {
-                    ig.game.player.pos.x -= 19;
+            }
+            for (j = firstRowIndex; j > 0; j--) {
+                firstElementInRow = edgeArrOrganizedByY[j][1][0];
+                lastElementInRow = edgeArrOrganizedByY[j][1][edgeArrOrganizedByY[j][1].length - 1];
+                if (lastElementInRow < sectorStartX || firstElementInRow > sectorEndX) {
+                    lastRowIndex = j + 1;
+                    break;
+                }
+            }
+            if (lastRowIndex == null) {
+                lastRowIndex = 0;
+            }
+            // move player to the correct y coordinate
+            if (playerPos.y > edgeArrOrganizedByY[firstRowIndex][0]) {
+                while (playerPos.y > edgeArrOrganizedByY[firstRowIndex][0]) {
+                    ig.game.player.pos.y -= 19;
                     await delay(moveWait);
                 }
             } else {
-                await delay(moveWait);
+                while (playerPos.y < edgeArrOrganizedByY[firstRowIndex][0]) {
+                    ig.game.player.pos.y += 19;
+                    await delay(moveWait);
+                }
             }
-            for (let j = edgeArrOrganizedByY[i][1][edgeArrOrganizedByY[i][1].length - 1]; j >= edgeArrOrganizedByY[i][1][0]; j--) {
-                if (!currentlyScanning) {
-                    return;
+            currentRowIndex = firstRowIndex;
+            while (playerPos.y >= edgeArrOrganizedByY[lastRowIndex][0]) {
+                // go right
+                if (rowNumber % 2 == 0) {
+                    firstElementInRow = edgeArrOrganizedByY[currentRowIndex][1][0];
+                    lastElementInRow = edgeArrOrganizedByY[currentRowIndex][1][edgeArrOrganizedByY[currentRowIndex][1].length - 1];
+                    // find row start
+                    firstElementInRow <= sectorStartX ? rowStartX = sectorStartX : rowStartX = firstElementInRow;
+                    // find row end
+                    lastElementInRow >= sectorEndX ? rowEndX = sectorEndX : rowEndX = lastElementInRow;
+                    // move to row start
+                    if (playerPos.x < rowStartX) {
+                        while (playerPos.x < rowStartX) {
+                            ig.game.player.pos.x += 19;
+                            await delay(moveWait);
+                        }
+                    } else {
+                        while (playerPos.x > rowStartX) {
+                            ig.game.player.pos.x -= 19;
+                            await delay(moveWait);
+                        }
+                    }
+                    // move to row end and scan
+                    while (playerPos.x < rowEndX) {
+                        if (ig.game.player[thingBehindPlayer] !== null) {
+                            placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                        }
+                        ig.game.player.pos.x += 19;
+                        await delay(moveWait);
+                    }
+                // go left
+                } else {
+                    firstElementInRow = edgeArrOrganizedByY[currentRowIndex][1][0];
+                    lastElementInRow = edgeArrOrganizedByY[currentRowIndex][1][edgeArrOrganizedByY[currentRowIndex][1].length - 1];
+                    // find row start
+                    lastElementInRow >= sectorEndX ? rowStartX = sectorEndX : rowStartX = lastElementInRow;
+                    // find row end
+                    firstElementInRow <= sectorStartX ? rowEndX = sectorStartX : rowEndX = firstElementInRow;
+                    // move to row start
+                    if (playerPos.x < rowStartX) {
+                        while (playerPos.x < rowStartX) {
+                            ig.game.player.pos.x += 19;
+                            await delay(moveWait);
+                        }
+                    } else {
+                        while (playerPos.x > rowStartX) {
+                            ig.game.player.pos.x -= 19;
+                            await delay(moveWait);
+                        }
+                    }
+                    // move to row end and scan
+                    while (playerPos.x > rowEndX) {
+                        if (ig.game.player[thingBehindPlayer] !== null) {
+                            placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                        }
+                        ig.game.player.pos.x -= 19;
+                        await delay(moveWait);
+                    }
                 }
-                (j - edgeArrOrganizedByY[i][1][0] < 20 || edgeArrOrganizedByY[i][1][edgeArrOrganizedByY[i][1].length - 1] - j < 20) ? moveWait = 15 : moveWait = 25;
-                ig.game.player.pos.x = j * 19;
-                if (ig.game.player.thingToLeftOfPlayer !== null) {
-                    blockId = ig.game.player.thingToLeftOfPlayer.thing.id;
-                    blockRotation = ig.game.player.thingToLeftOfPlayer.rotation;
-                    blockFlip = ig.game.player.thingToLeftOfPlayer.flip;
-                    placeArr.push([j, edgeArrOrganizedByY[i][0], blockId, blockRotation, blockFlip]);
+                // move to next row
+                if (playerPos.y != edgeArrOrganizedByY[lastRowIndex][0]) {
+                    ig.game.player.pos.y -= 19;
+                    currentRowIndex--;
+                    rowNumber++;
+                    if (ig.game.player[thingBehindPlayer] !== null) {
+                        placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                    }
+                    await delay(moveWait);
+                } else {
+                    if (ig.game.player[thingBehindPlayer] !== null) {
+                        placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                    }
+                    await delay(moveWait);
+                    break;
                 }
-                await delay(moveWait);
             }
         }
+        // afterward increment sector number, and update sectorStartX and sectorEndX
+        lastRowIndex = null;
+        sectorNumber++;
+        sectorStartX = sectorEndX + 1;
+        (sectorEndX + sectorWidth > maxX && sectorEndX != maxX) ? sectorEndX = maxX : sectorEndX += sectorWidth;
     }
+    // once finished scanning
     stopScanning();
     ig.game.player.say("finished scanning!");
 }
 
 async function stopScanning() {
     ig.game.player[maxVelFunc] = originalVelFunc;
-    ig.Entity.COLLIDES.FIXED = 8;
+    ig.Entity[collideFunc] = originalCollideFunc;
     currentlyScanning = false;
     ig.game.settings.glueWearable = false;
     getWearable(null);
@@ -381,7 +564,7 @@ async function init() {
     placeHistory = [];
     tired = false;
     callCount = 0; 
-    placeWait = 25;
+    placeWait = 35;
     $('div').remove();
     ig.system.resize(window.innerWidth, window.innerHeight);
     ig.game.panelSet.init();
