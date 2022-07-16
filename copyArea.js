@@ -17,21 +17,26 @@ async function getDeobfuscator() {
 
 async function init() {
     await getDeobfuscator();
+    player = Deobfuscator.object(ig.game, 'screenName', true);
     ig.game.area = Deobfuscator.object(ig.game,'currentArea',false);
     obfVar = Deobfuscator.object(ig.game,'mnt_P',false);
     areaType = Deobfuscator.keyBetween(obfVar.mnt_P,"{p:b.",",a:b.c");
     itemEquip = Deobfuscator.function(ig.game.attachmentManager,'(c);!e&&!a.O',true);
-    maxVelFunc = Deobfuscator.function(ig.game.player, '.x;this.maxVel.y=this.', true);
-    thingBehindPlayer = Deobfuscator.keyBetween(ig.game.player.somethingPushingUpBehindPlayer,'return this.','&&this.O');
+    maxVelFunc = Deobfuscator.function(ig.game[player], '.x;this.maxVel.y=this.', true);
+    thingBehindPlayer = Deobfuscator.keyBetween(ig.game[player].somethingPushingUpBehindPlayer,'return this.','&&this.O');
     collideFunc = Deobfuscator.function(ig.Entity,'&&b instanceof EntityCrumbling||b.',true);
-    originalVelFunc = ig.game.player[maxVelFunc];
+    pushFunc = Deobfuscator.function(window.Item.prototype,'Item.prototype.BASE_TYPES[this.base]==Item.prototype.BASE_TYPES.PUSH',true);
+    diagPushFunc = Deobfuscator.function(window.Item.prototype,'Item.prototype.BASE_TYPES[this.base]==Item.prototype.BASE_TYPES.PUSHDIAG',true);
+    originalVelFunc = ig.game[player][maxVelFunc];
     originalCollideFunc = ig.Entity[collideFunc];
+    originalPushFunc = window.Item.prototype[pushFunc];
+    originalDiagPushFunc = window.Item.prototype[diagPushFunc];
     // can do ig.game.area.currentArea = (areaId) if you want to scan an area without people seeing you
     // and do ig.game.area.currentArea = originalArea to change it back
     // if you do this and the area is the inner or an outer ring, also do ig.game.area[areaType] = 1 into console.
     originalArea = ig.game.area.currentArea;
     originalAreaType = ig.game.area[areaType];
-    ig.game.player.kill = function(){};
+    ig.game[player].kill = function(){};
     edgeArr = []; edgeArrOrganizedByY = []; placeArr = []; areaSize = [];
     toggling = false; currentlyScanning = false;
     minX = Infinity; maxX = -Infinity; minY = Infinity; maxY = -Infinity; 
@@ -47,7 +52,7 @@ async function init() {
     addVertex = async function(x, y, wantsFeedback) {
         edgeArr.push([x, y]);
         if (wantsFeedback) {
-            ig.game.player.say("vertex added to shape!");
+            ig.game[player].say("vertex added to shape!");
         }
         if (x > maxX) {maxX = x;}
         if (x < minX) {minX = x;}
@@ -74,29 +79,29 @@ async function init() {
         });
     };
     getWearable = async function(id) {
-        if (typeof ig.game.player.attachments.w == 'undefined' || ig.game.player.attachments?.w === null) {
-            ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
-        } else if (ig.game.player.attachments.w.id != id) {
-            ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,null,null,"STACKWEAR");
+        if (typeof ig.game[player].attachments.w == 'undefined' || ig.game[player].attachments?.w === null) {
+            ig.game.attachmentManager[itemEquip](ig.game[player],ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
+        } else if (ig.game[player].attachments.w.id != id) {
+            ig.game.attachmentManager[itemEquip](ig.game[player],ig.game.attachmentManager.slots.WEARABLE,null,null,"STACKWEAR");
             await delay(100);
-            ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
+            ig.game.attachmentManager[itemEquip](ig.game[player],ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
         }
     };
     setInterval(() => {
         playerPos = {
-            x: Math.round(ig.game.player.pos.x / 19),
-            y: Math.round(ig.game.player.pos.y / 19)
+            x: Math.round(ig.game[player].pos.x / 19),
+            y: Math.round(ig.game[player].pos.y / 19)
         }
         if (ig.input.state("alt") && ig.input.pressed("s") && edgeArr.length > 0 && !toggling){
             toggling = true;
             setTimeout(() => {
                 if (currentlyScanning) {
                     stopScanning();
-                    ig.game.player.say("canceled scanning!");
+                    ig.game[player].say("canceled scanning!");
                 } else {
                     suggestedPos = "bottom left";
                     createEdges();
-                    ig.game.player.say("shape finished! now scanning.")
+                    ig.game[player].say("shape finished! now scanning.")
                 }
                 toggling = false;
             }, 500)
@@ -126,7 +131,7 @@ async function init() {
                 }
                 suggestedPos = "center";
                 createEdges();
-                ig.game.player.say("circle created! now scanning.");
+                ig.game[player].say("circle created! now scanning.");
                 toggling = false;
             }, 500)
         }
@@ -152,7 +157,7 @@ async function init() {
                 addVertex(centerX + (areaSize[0] - 1), centerY, false);
                 addVertex(centerX, centerY, false);
                 createEdges();
-                ig.game.player.say("rectangle created! now scanning.");
+                ig.game[player].say("rectangle created! now scanning.");
                 toggling = false;
             }, 500)
         }
@@ -241,11 +246,14 @@ function calculateOffset() {
 }
 
 async function moveToStart() {
+    ig.game.gravity = 0;
     // prevents getting pushed by pushings/liquid/other things like that
-    ig.game.player[maxVelFunc] = function() {
+    ig.game[player][maxVelFunc] = function() {
         this.maxVel.x = 0;
         this.maxVel.y = 0;
     };
+    window.Item.prototype[pushFunc] = function(){return false};
+    window.Item.prototype[diagPushFunc] = function(){return false};
     // prevents getting moved by solid dynamics/interactings/other things like that
     ig.Entity[collideFunc] = function(){};
     // prevents getting moved by interactings, transportings, and grabbing dynamics
@@ -256,22 +264,28 @@ async function moveToStart() {
         yDiff = Math.abs(startY - playerPos.y);
     }, 0)
     await delay(100);
+    if (xDiff > 80) {
+        ig.game[player].pos.x = (startX - 80) * 19;
+    }
+    if (yDiff > 80) {
+        ig.game[player].pos.y = (startY - 80) * 19;
+    }
     while (yDiff > 1 || xDiff > 1) {
         while (xDiff > 1) {
             if (playerPos.x < startX) {
-                ig.game.player.pos.x += 19;
+                ig.game[player].pos.x += 19;
                 await delay(1);
             } else {
-                ig.game.player.pos.x -= 19;
+                ig.game[player].pos.x -= 19;
                 await delay(1);
             }
         }
         while (yDiff > 1) {
             if (playerPos.y < startY) {
-                ig.game.player.pos.y += 19;
+                ig.game[player].pos.y += 19;
                 await delay(1);
             } else {
-                ig.game.player.pos.y -= 19;
+                ig.game[player].pos.y -= 19;
                 await delay(1);
             }
         }
@@ -289,7 +303,7 @@ async function scanArea() {
         rowNumber = 0;
         // move player to the correct x coordinate
         while (playerPos.x < sectorStartX) {
-            ig.game.player.pos.x += 19;
+            ig.game[player].pos.x += 19;
             await delay(moveWait);
         }
         // traverse downward on these sectors
@@ -317,12 +331,12 @@ async function scanArea() {
             // move player to the correct y coordinate
             if (playerPos.y > edgeArrOrganizedByY[firstRowIndex][0]) {
                 while (playerPos.y > edgeArrOrganizedByY[firstRowIndex][0]) {
-                    ig.game.player.pos.y -= 19;
+                    ig.game[player].pos.y -= 19;
                     await delay(moveWait);
                 }
             } else {
                 while (playerPos.y < edgeArrOrganizedByY[firstRowIndex][0]) {
-                    ig.game.player.pos.y += 19;
+                    ig.game[player].pos.y += 19;
                     await delay(moveWait);
                 }
             }
@@ -339,21 +353,21 @@ async function scanArea() {
                     // move to row start
                     if (playerPos.x < rowStartX) {
                         while (playerPos.x < rowStartX) {
-                            ig.game.player.pos.x += 19;
+                            ig.game[player].pos.x += 19;
                             await delay(moveWait);
                         }
                     } else {
                         while (playerPos.x > rowStartX) {
-                            ig.game.player.pos.x -= 19;
+                            ig.game[player].pos.x -= 19;
                             await delay(moveWait);
                         }
                     }
                     // move to row end and scan
                     while (playerPos.x < rowEndX) {
-                        if (ig.game.player[thingBehindPlayer] !== null) {
-                            placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                        if (ig.game[player][thingBehindPlayer] !== null) {
+                            placeArr.push([playerPos.x, playerPos.y, ig.game[player][thingBehindPlayer].thing.id, ig.game[player][thingBehindPlayer].rotation, ig.game[player][thingBehindPlayer].flip]);
                         }
-                        ig.game.player.pos.x += 19;
+                        ig.game[player].pos.x += 19;
                         await delay(moveWait);
                     }
                 // go left
@@ -367,36 +381,36 @@ async function scanArea() {
                     // move to row start
                     if (playerPos.x < rowStartX) {
                         while (playerPos.x < rowStartX) {
-                            ig.game.player.pos.x += 19;
+                            ig.game[player].pos.x += 19;
                             await delay(moveWait);
                         }
                     } else {
                         while (playerPos.x > rowStartX) {
-                            ig.game.player.pos.x -= 19;
+                            ig.game[player].pos.x -= 19;
                             await delay(moveWait);
                         }
                     }
                     // move to row end and scan
                     while (playerPos.x > rowEndX) {
-                        if (ig.game.player[thingBehindPlayer] !== null) {
-                            placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                        if (ig.game[player][thingBehindPlayer] !== null) {
+                            placeArr.push([playerPos.x, playerPos.y, ig.game[player][thingBehindPlayer].thing.id, ig.game[player][thingBehindPlayer].rotation, ig.game[player][thingBehindPlayer].flip]);
                         }
-                        ig.game.player.pos.x -= 19;
+                        ig.game[player].pos.x -= 19;
                         await delay(moveWait);
                     }
                 }
                 // move to next row
                 if (playerPos.y != edgeArrOrganizedByY[lastRowIndex][0]) {
-                    ig.game.player.pos.y += 19;
+                    ig.game[player].pos.y += 19;
                     currentRowIndex++;
                     rowNumber++;
-                    if (ig.game.player[thingBehindPlayer] !== null) {
-                        placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                    if (ig.game[player][thingBehindPlayer] !== null) {
+                        placeArr.push([playerPos.x, playerPos.y, ig.game[player][thingBehindPlayer].thing.id, ig.game[player][thingBehindPlayer].rotation, ig.game[player][thingBehindPlayer].flip]);
                     }
                     await delay(moveWait);
                 } else {
-                    if (ig.game.player[thingBehindPlayer] !== null) {
-                        placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                    if (ig.game[player][thingBehindPlayer] !== null) {
+                        placeArr.push([playerPos.x, playerPos.y, ig.game[player][thingBehindPlayer].thing.id, ig.game[player][thingBehindPlayer].rotation, ig.game[player][thingBehindPlayer].flip]);
                     }
                     await delay(moveWait);
                     break;
@@ -427,12 +441,12 @@ async function scanArea() {
             // move player to the correct y coordinate
             if (playerPos.y > edgeArrOrganizedByY[firstRowIndex][0]) {
                 while (playerPos.y > edgeArrOrganizedByY[firstRowIndex][0]) {
-                    ig.game.player.pos.y -= 19;
+                    ig.game[player].pos.y -= 19;
                     await delay(moveWait);
                 }
             } else {
                 while (playerPos.y < edgeArrOrganizedByY[firstRowIndex][0]) {
-                    ig.game.player.pos.y += 19;
+                    ig.game[player].pos.y += 19;
                     await delay(moveWait);
                 }
             }
@@ -449,21 +463,21 @@ async function scanArea() {
                     // move to row start
                     if (playerPos.x < rowStartX) {
                         while (playerPos.x < rowStartX) {
-                            ig.game.player.pos.x += 19;
+                            ig.game[player].pos.x += 19;
                             await delay(moveWait);
                         }
                     } else {
                         while (playerPos.x > rowStartX) {
-                            ig.game.player.pos.x -= 19;
+                            ig.game[player].pos.x -= 19;
                             await delay(moveWait);
                         }
                     }
                     // move to row end and scan
                     while (playerPos.x < rowEndX) {
-                        if (ig.game.player[thingBehindPlayer] !== null) {
-                            placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                        if (ig.game[player][thingBehindPlayer] !== null) {
+                            placeArr.push([playerPos.x, playerPos.y, ig.game[player][thingBehindPlayer].thing.id, ig.game[player][thingBehindPlayer].rotation, ig.game[player][thingBehindPlayer].flip]);
                         }
-                        ig.game.player.pos.x += 19;
+                        ig.game[player].pos.x += 19;
                         await delay(moveWait);
                     }
                 // go left
@@ -477,36 +491,36 @@ async function scanArea() {
                     // move to row start
                     if (playerPos.x < rowStartX) {
                         while (playerPos.x < rowStartX) {
-                            ig.game.player.pos.x += 19;
+                            ig.game[player].pos.x += 19;
                             await delay(moveWait);
                         }
                     } else {
                         while (playerPos.x > rowStartX) {
-                            ig.game.player.pos.x -= 19;
+                            ig.game[player].pos.x -= 19;
                             await delay(moveWait);
                         }
                     }
                     // move to row end and scan
                     while (playerPos.x > rowEndX) {
-                        if (ig.game.player[thingBehindPlayer] !== null) {
-                            placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                        if (ig.game[player][thingBehindPlayer] !== null) {
+                            placeArr.push([playerPos.x, playerPos.y, ig.game[player][thingBehindPlayer].thing.id, ig.game[player][thingBehindPlayer].rotation, ig.game[player][thingBehindPlayer].flip]);
                         }
-                        ig.game.player.pos.x -= 19;
+                        ig.game[player].pos.x -= 19;
                         await delay(moveWait);
                     }
                 }
                 // move to next row
                 if (playerPos.y != edgeArrOrganizedByY[lastRowIndex][0]) {
-                    ig.game.player.pos.y -= 19;
+                    ig.game[player].pos.y -= 19;
                     currentRowIndex--;
                     rowNumber++;
-                    if (ig.game.player[thingBehindPlayer] !== null) {
-                        placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                    if (ig.game[player][thingBehindPlayer] !== null) {
+                        placeArr.push([playerPos.x, playerPos.y, ig.game[player][thingBehindPlayer].thing.id, ig.game[player][thingBehindPlayer].rotation, ig.game[player][thingBehindPlayer].flip]);
                     }
                     await delay(moveWait);
                 } else {
-                    if (ig.game.player[thingBehindPlayer] !== null) {
-                        placeArr.push([playerPos.x, playerPos.y, ig.game.player[thingBehindPlayer].thing.id, ig.game.player[thingBehindPlayer].rotation, ig.game.player[thingBehindPlayer].flip]);
+                    if (ig.game[player][thingBehindPlayer] !== null) {
+                        placeArr.push([playerPos.x, playerPos.y, ig.game[player][thingBehindPlayer].thing.id, ig.game[player][thingBehindPlayer].rotation, ig.game[player][thingBehindPlayer].flip]);
                     }
                     await delay(moveWait);
                     break;
@@ -521,12 +535,15 @@ async function scanArea() {
     }
     // once finished scanning
     stopScanning();
-    ig.game.player.say("finished scanning!");
+    ig.game[player].say("finished scanning!");
 }
 
 async function stopScanning() {
-    ig.game.player[maxVelFunc] = originalVelFunc;
+    ig.game.gravity = 800;
+    ig.game[player][maxVelFunc] = originalVelFunc;
     ig.Entity[collideFunc] = originalCollideFunc;
+    window.Item.prototype[pushFunc] = originalPushFunc;
+    window.Item.prototype[diagPushFunc] = originalDiagPushFunc;
     currentlyScanning = false;
     ig.game.settings.glueWearable = false;
     getWearable(null);
@@ -547,14 +564,12 @@ async function getDeobfuscator() {
 
 async function init() {
     await getDeobfuscator();
-    ig.game.player.kill = function(){};
+    player = Deobfuscator.object(ig.game, 'screenName', true);
+    ig.game[player].kill = function(){};
     map = Deobfuscator.object(ig.game,'queuePerformDelayMs',true);
     place = Deobfuscator.function(ig.game[map],'n:b||0,flip:c},d,!',true);
-    itemEquip = Deobfuscator.function(ig.game.attachmentManager,'(c);!e&&!a.O',true);
-    maxVelFunc = Deobfuscator.function(ig.game.player, '.x;this.maxVel.y=this.', true);
-    collideFunc = Deobfuscator.function(ig.Entity,'&&b instanceof EntityCrumbling||b.',true);
-    originalVelFunc = ig.game.player[maxVelFunc];
-    originalCollideFunc = ig.Entity[collideFunc];
+    maxVelFunc = Deobfuscator.function(ig.game[player], '.x;this.maxVel.y=this.', true);
+    originalVelFunc = ig.game[player][maxVelFunc];
     placeArr = ${JSON.stringify(placeArr)}; 
     height = ${height}; 
     startX = ${startX};
@@ -567,7 +582,7 @@ async function init() {
     placeHistory = [];
     tired = false;
     callCount = 0; 
-    placeWait = 35;
+    placeWait = 50;
     $('div').remove();
     ig.system.resize(window.innerWidth, window.innerHeight);
     ig.game.panelSet.init();
@@ -575,8 +590,8 @@ async function init() {
     info = Deobfuscator.object(ig.game,'mnt_P',true);
     setInterval(() => {
         playerPos = {
-            x: Math.round(ig.game.player.pos.x / 19),
-            y: Math.round(ig.game.player.pos.y / 19)
+            x: Math.round(ig.game[player].pos.x / 19),
+            y: Math.round(ig.game[player].pos.y / 19)
         }
     }, 0);
     if (typeof keyboard === 'undefined') {
@@ -606,47 +621,45 @@ async function init() {
         }
     }
     getWearable = async function(id) {
-        if (typeof ig.game.player.attachments.w == 'undefined' || ig.game.player.attachments?.w === null) {
-            ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
-        } else if (ig.game.player.attachments.w.id != id) {
-            ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,null,null,"STACKWEAR");
+        if (typeof ig.game[player].attachments.w == 'undefined' || ig.game[player].attachments?.w === null) {
+            ig.game.attachmentManager[itemEquip](ig.game[player],ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
+        } else if (ig.game[player].attachments.w.id != id) {
+            ig.game.attachmentManager[itemEquip](ig.game[player],ig.game.attachmentManager.slots.WEARABLE,null,null,"STACKWEAR");
             await delay(100);
-            ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
+            ig.game.attachmentManager[itemEquip](ig.game[player],ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
         }
     };
     pasteArea();
 }
 
 async function pasteArea() {
-    ig.game.player[maxVelFunc] = function() {
+    ig.game[player][maxVelFunc] = function() {
         this.maxVel.x = 0;
         this.maxVel.y = 0;
     };
-    ig.Entity[collideFunc] = function() {};
-    getWearable("62b5eba64b4994128421214a");
     switch(prompt('Enter where you want your current position to be in relation to the paste. Options are: bottom left, bottom right, top left, top right, center.', suggestedPos)) {
         case "bottom left":
-            ig.game.player.pos.x += bottomLeftXOffset * 19;
-            ig.game.player.pos.y -= (height - 1) * 19; 
+            ig.game[player].pos.x += bottomLeftXOffset * 19;
+            ig.game[player].pos.y -= (height - 1) * 19; 
             break;
         case "bottom right":
-            ig.game.player.pos.x += bottomRightXOffset * 19;
-            ig.game.player.pos.y -= (height - 1) * 19; 
+            ig.game[player].pos.x += bottomRightXOffset * 19;
+            ig.game[player].pos.y -= (height - 1) * 19; 
             break;
         case "top right":
-            ig.game.player.pos.x += topRightXOffset * 19;
+            ig.game[player].pos.x += topRightXOffset * 19;
             break;
         case "center":
-            ig.game.player.pos.x += centerXOffset * 19;
-            ig.game.player.pos.y -= Math.round((height - 1) / 2 * 19); 
+            ig.game[player].pos.x += centerXOffset * 19;
+            ig.game[player].pos.y -= Math.round((height - 1) / 2 * 19); 
     }
     await delay(500);
     xDiff = playerPos.x - startX;
     yDiff = playerPos.y - startY;
     for (let i = 0; i < placeArr.length; i++) {
         if (!tired) {
-            ig.game.player.pos.x = (placeArr[i][0] + xDiff) * 19;
-            ig.game.player.pos.y = (placeArr[i][1] + yDiff) * 19;
+            ig.game[player].pos.x = (placeArr[i][0] + xDiff) * 19;
+            ig.game[player].pos.y = (placeArr[i][1] + yDiff) * 19;
             ig.game[map][place](placeArr[i][2], placeArr[i][3], placeArr[i][4], {x: placeArr[i][0] + xDiff, y: placeArr[i][1] + yDiff}, null, !0);
             placeHistory.push([i, placeArr[i]]);
             if (placeHistory.length > 20) {
@@ -655,8 +668,8 @@ async function pasteArea() {
             await delay(placeWait);
         } else {
             i = placeHistory[0][0];
-            ig.game.player.pos.x = (placeHistory[0][1][0] + xDiff) * 19;
-            ig.game.player.pos.y = (placeHistory[0][1][1] + yDiff) * 19;
+            ig.game[player].pos.x = (placeHistory[0][1][0] + xDiff) * 19;
+            ig.game[player].pos.y = (placeHistory[0][1][1] + yDiff) * 19;
             ig.game[map].deleteThingAt(placeHistory[0][1][0] + xDiff, placeHistory[0][1][1] + yDiff);
             await delay(100);
             ig.game[map][place](placeHistory[0][1][2], placeHistory[0][1][3], placeHistory[0][1][4], {x: placeHistory[0][1][0] + xDiff, y: placeHistory[0][1][1] + yDiff}, null, !0);
@@ -667,24 +680,22 @@ async function pasteArea() {
 }
 
 async function stopPasting() {
-    ig.game.player[maxVelFunc] = originalVelFunc;
-    ig.Entity[collideFunc] = originalCollideFunc;
-    getWearable(null);
+    ig.game[player][maxVelFunc] = originalVelFunc;
     await delay(1000);
     placeArr.length = 0;
-    ig.game.player.say('finished pasting!');
+    ig.game[player].say('finished pasting!');
 }
 
 init();`;
     if (location.protocol === 'https:') {
         navigator.clipboard.writeText(copyText).then(function() {
-            ig.game.player.say("block data copied to clipboard!");
+            ig.game[player].say("block data copied to clipboard!");
         }, 
         function() {
-            ig.game.player.say("could not copy data. manually copy block data from the console.");
+            ig.game[player].say("could not copy data. manually copy block data from the console.");
         });
     } else {
-        ig.game.player.say("copy block data from the console.");
+        ig.game[player].say("copy block data from the console.");
     }
     consoleref.log(copyText);
 }
