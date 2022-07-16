@@ -550,8 +550,11 @@ async function init() {
     ig.game.player.kill = function(){};
     map = Deobfuscator.object(ig.game,'queuePerformDelayMs',true);
     place = Deobfuscator.function(ig.game[map],'n:b||0,flip:c},d,!',true);
+    itemEquip = Deobfuscator.function(ig.game.attachmentManager,'(c);!e&&!a.O',true);
     maxVelFunc = Deobfuscator.function(ig.game.player, '.x;this.maxVel.y=this.', true);
+    collideFunc = Deobfuscator.function(ig.Entity,'&&b instanceof EntityCrumbling||b.',true);
     originalVelFunc = ig.game.player[maxVelFunc];
+    originalCollideFunc = ig.Entity[collideFunc];
     placeArr = ${JSON.stringify(placeArr)}; 
     height = ${height}; 
     startX = ${startX};
@@ -602,6 +605,15 @@ async function init() {
             tired = false;
         }
     }
+    getWearable = async function(id) {
+        if (typeof ig.game.player.attachments.w == 'undefined' || ig.game.player.attachments?.w === null) {
+            ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
+        } else if (ig.game.player.attachments.w.id != id) {
+            ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,null,null,"STACKWEAR");
+            await delay(100);
+            ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
+        }
+    };
     pasteArea();
 }
 
@@ -610,6 +622,8 @@ async function pasteArea() {
         this.maxVel.x = 0;
         this.maxVel.y = 0;
     };
+    ig.Entity[collideFunc] = function() {};
+    getWearable("62b5eba64b4994128421214a");
     switch(prompt('Enter where you want your current position to be in relation to the paste. Options are: bottom left, bottom right, top left, top right, center.', suggestedPos)) {
         case "bottom left":
             ig.game.player.pos.x += bottomLeftXOffset * 19;
@@ -654,6 +668,8 @@ async function pasteArea() {
 
 async function stopPasting() {
     ig.game.player[maxVelFunc] = originalVelFunc;
+    ig.Entity[collideFunc] = originalCollideFunc;
+    getWearable(null);
     await delay(1000);
     placeArr.length = 0;
     ig.game.player.say('finished pasting!');
