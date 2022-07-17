@@ -566,6 +566,9 @@ async function stopScanning() {
         clearInterval(calculateDistanceToStart);
     }
     copyText = `
+// if you stop pasting due to a failwhale, info rift, peacepark, or anything
+// type "i" in console BEFORE reloading, then set startBlockIndex to the value of i in this script
+// that way you can continue placing where you left off
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
 async function getDeobfuscator() {
