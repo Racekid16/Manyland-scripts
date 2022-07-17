@@ -41,7 +41,7 @@ async function init() {
     toggling = false; currentlyScanning = false;
     minX = Infinity; maxX = -Infinity; minY = Infinity; maxY = -Infinity; 
     firstRowIndex = null; lastRowIndex = null;
-    sectorNumber = 0; callCount = 0; 
+    sectorNumber = 0; callCount = 0; maxLastSectorWidth = -Infinity;
     sectorWidth = 10; moveWait = 15;
     suggestedPos = "";
     // removes the ad bar
@@ -242,6 +242,18 @@ function calculateOffset() {
     midYLastX = edgeArrOrganizedByY[midYIndex][1][edgeArrOrganizedByY[midYIndex][1].length - 1];
     midYMiddleX = Math.round((midYFirstX + midYLastX) / 2);
     centerXOffset = startX - midYMiddleX;
+    // chooses a sector width such that the last sector isn't very narrow
+    for (let i = 10; i < 15; i++) {
+        lastSectorWidth = width % i;
+        if (lastSectorWidth == 0) {
+            sectorWidth = i;
+            break;
+        }
+        if (lastSectorWidth > maxLastSectorWidth) {
+            maxLastSectorWidth = lastSectorWidth;
+            sectorWidth = i;
+        }
+    }
     moveToStart();
 }
 
@@ -568,8 +580,15 @@ async function init() {
     ig.game[player].kill = function(){};
     map = Deobfuscator.object(ig.game,'queuePerformDelayMs',true);
     place = Deobfuscator.function(ig.game[map],'n:b||0,flip:c},d,!',true);
+    itemEquip = Deobfuscator.function(ig.game.attachmentManager,'(c);!e&&!a.O',true);
     maxVelFunc = Deobfuscator.function(ig.game[player], '.x;this.maxVel.y=this.', true);
+    collideFunc = Deobfuscator.function(ig.Entity,'&&b instanceof EntityCrumbling||b.',true);
+    pushFunc = Deobfuscator.function(window.Item.prototype,'Item.prototype.BASE_TYPES[this.base]==Item.prototype.BASE_TYPES.PUSH',true);
+    diagPushFunc = Deobfuscator.function(window.Item.prototype,'Item.prototype.BASE_TYPES[this.base]==Item.prototype.BASE_TYPES.PUSHDIAG',true);
     originalVelFunc = ig.game[player][maxVelFunc];
+    originalCollideFunc = ig.Entity[collideFunc];
+    originalPushFunc = window.Item.prototype[pushFunc];
+    originalDiagPushFunc = window.Item.prototype[diagPushFunc];
     placeArr = ${JSON.stringify(placeArr)}; 
     height = ${height}; 
     startX = ${startX};
@@ -582,7 +601,8 @@ async function init() {
     placeHistory = [];
     tired = false;
     callCount = 0; 
-    placeWait = 50;
+    placeWait = 25;
+    startBlockIndex = 0;
     $('div').remove();
     ig.system.resize(window.innerWidth, window.innerHeight);
     ig.game.panelSet.init();
@@ -633,10 +653,16 @@ async function init() {
 }
 
 async function pasteArea() {
+    ig.game.gravity = 0;
     ig.game[player][maxVelFunc] = function() {
         this.maxVel.x = 0;
         this.maxVel.y = 0;
     };
+    ig.Entity[collideFunc] = function(){};
+    window.Item.prototype[pushFunc] = function(){return false};
+    window.Item.prototype[diagPushFunc] = function(){return false};
+    getWearable("62b5eba64b4994128421214a");
+    ig.game.settings.glueWearable = true;
     switch(prompt('Enter where you want your current position to be in relation to the paste. Options are: bottom left, bottom right, top left, top right, center.', suggestedPos)) {
         case "bottom left":
             ig.game[player].pos.x += bottomLeftXOffset * 19;
@@ -656,7 +682,10 @@ async function pasteArea() {
     await delay(500);
     xDiff = playerPos.x - startX;
     yDiff = playerPos.y - startY;
-    for (let i = 0; i < placeArr.length; i++) {
+    ig.game[player].pos.x = (placeArr[startBlockIndex][0] + xDiff) * 19;
+    ig.game[player].pos.y = (placeArr[startBlockIndex][1] + yDiff) * 19;
+    await delay(2000);
+    for (i = startBlockIndex; i < placeArr.length; i++) {
         if (!tired) {
             ig.game[player].pos.x = (placeArr[i][0] + xDiff) * 19;
             ig.game[player].pos.y = (placeArr[i][1] + yDiff) * 19;
@@ -680,7 +709,13 @@ async function pasteArea() {
 }
 
 async function stopPasting() {
+    ig.game.gravity = 800;
     ig.game[player][maxVelFunc] = originalVelFunc;
+    ig.Entity[collideFunc] = originalCollideFunc;
+    window.Item.prototype[pushFunc] = originalPushFunc;
+    window.Item.prototype[diagPushFunc] = originalDiagPushFunc;
+    ig.game.settings.glueWearable = false;
+    getWearable(null);
     await delay(1000);
     placeArr.length = 0;
     ig.game[player].say('finished pasting!');
