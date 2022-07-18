@@ -607,7 +607,7 @@ async function init() {
     placeHistory = [];
     tired = false;
     callCount = 0; 
-    placeWait = 25;
+    placeWait = 35;
     blockIndex = 0;
     startBlockIndex = 0;
     $('div').remove();
