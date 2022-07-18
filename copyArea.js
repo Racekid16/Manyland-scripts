@@ -570,6 +570,7 @@ async function stopScanning() {
 // you should be given an alert with the last value of blockIndex. 
 // modify this script by setting startBlockIndex to that given value, then paste again.
 // that way you can continue placing where you left off
+// if you keep getting info rifts increase placeWait
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
 async function getDeobfuscator() {
