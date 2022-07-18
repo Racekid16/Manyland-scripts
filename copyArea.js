@@ -27,10 +27,10 @@ async function init() {
     collideFunc = Deobfuscator.function(ig.Entity,'&&b instanceof EntityCrumbling||b.',true);
     pushFunc = Deobfuscator.function(window.Item.prototype,'Item.prototype.BASE_TYPES[this.base]==Item.prototype.BASE_TYPES.PUSH',true);
     diagPushFunc = Deobfuscator.function(window.Item.prototype,'Item.prototype.BASE_TYPES[this.base]==Item.prototype.BASE_TYPES.PUSHDIAG',true);
-    originalVelFunc = ig.game[player][maxVelFunc];
-    originalCollideFunc = ig.Entity[collideFunc];
-    originalPushFunc = window.Item.prototype[pushFunc];
-    originalDiagPushFunc = window.Item.prototype[diagPushFunc];
+    ig.game[player].originalVelFunc = ig.game[player][maxVelFunc];
+    ig.Entity.originalCollideFunc = ig.Entity[collideFunc];
+    window.Item.prototype.originalPushFunc = window.Item.prototype[pushFunc];
+    window.Item.prototype.originalDiagPushFunc = window.Item.prototype[diagPushFunc];
     // can do ig.game.area.currentArea = (areaId) if you want to scan an area without people seeing you
     // and do ig.game.area.currentArea = originalArea to change it back
     // if you do this and the area is the inner or an outer ring, also do ig.game.area[areaType] = 1 into console.
@@ -552,10 +552,10 @@ async function scanArea() {
 
 async function stopScanning() {
     ig.game.gravity = 800;
-    ig.game[player][maxVelFunc] = originalVelFunc;
-    ig.Entity[collideFunc] = originalCollideFunc;
-    window.Item.prototype[pushFunc] = originalPushFunc;
-    window.Item.prototype[diagPushFunc] = originalDiagPushFunc;
+    ig.game[player][maxVelFunc] = ig.game[player].originalVelFunc;
+    ig.Entity[collideFunc] = ig.Entity.originalCollideFunc;
+    window.Item.prototype[pushFunc] = window.Item.prototype.originalPushFunc;
+    window.Item.prototype[diagPushFunc] = window.Item.prototype.originalDiagPushFunc;
     currentlyScanning = false;
     ig.game.settings.glueWearable = false;
     getWearable(null);
@@ -566,8 +566,9 @@ async function stopScanning() {
         clearInterval(calculateDistanceToStart);
     }
     copyText = `
-// if you stop pasting due to a failwhale, info rift, peacepark, or anything
-// type "i" in console BEFORE reloading, then set startBlockIndex to the value of i in this script
+// if you stop pasting due to an info rift
+// you should be given an alert with the last value of blockIndex. 
+// modify this script by setting startBlockIndex to that given value, then paste again.
 // that way you can continue placing where you left off
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
@@ -588,10 +589,11 @@ async function init() {
     collideFunc = Deobfuscator.function(ig.Entity,'&&b instanceof EntityCrumbling||b.',true);
     pushFunc = Deobfuscator.function(window.Item.prototype,'Item.prototype.BASE_TYPES[this.base]==Item.prototype.BASE_TYPES.PUSH',true);
     diagPushFunc = Deobfuscator.function(window.Item.prototype,'Item.prototype.BASE_TYPES[this.base]==Item.prototype.BASE_TYPES.PUSHDIAG',true);
-    originalVelFunc = ig.game[player][maxVelFunc];
-    originalCollideFunc = ig.Entity[collideFunc];
-    originalPushFunc = window.Item.prototype[pushFunc];
-    originalDiagPushFunc = window.Item.prototype[diagPushFunc];
+    ig.game[player].originalVelFunc = ig.game[player][maxVelFunc];
+    ig.Entity.originalCollideFunc = ig.Entity[collideFunc];
+    window.Item.prototype.originalPushFunc = window.Item.prototype[pushFunc];
+    window.Item.prototype.originalDiagPushFunc = window.Item.prototype[diagPushFunc];
+    ig.game.errorManager.originalKickedFunc = ig.game.errorManager.kicked;
     placeArr = ${JSON.stringify(placeArr)}; 
     height = ${height}; 
     startX = ${startX};
@@ -605,6 +607,7 @@ async function init() {
     tired = false;
     callCount = 0; 
     placeWait = 25;
+    blockIndex = 0;
     startBlockIndex = 0;
     $('div').remove();
     ig.system.resize(window.innerWidth, window.innerHeight);
@@ -652,6 +655,14 @@ async function init() {
             ig.game.attachmentManager[itemEquip](ig.game[player],ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
         }
     };
+    ig.game.errorManager.kicked = function(a){
+        if (blockIndex > 10) {
+            alert(\`You got an info rift. Your last block index value was \${blockIndex - 10}.\`);
+        } else {
+            alert(\`You got an info rift. Your last block index value was 0.\`);
+        }
+        ig.game.errorManager.originalKickedFunc(a);
+    }
     pasteArea();
 }
 
@@ -688,12 +699,12 @@ async function pasteArea() {
     ig.game[player].pos.x = (placeArr[startBlockIndex][0] + xDiff) * 19;
     ig.game[player].pos.y = (placeArr[startBlockIndex][1] + yDiff) * 19;
     await delay(2000);
-    for (i = startBlockIndex; i < placeArr.length; i++) {
+    for (blockIndex = startBlockIndex; blockIndex < placeArr.length; blockIndex++) {
         if (!tired) {
-            ig.game[player].pos.x = (placeArr[i][0] + xDiff) * 19;
-            ig.game[player].pos.y = (placeArr[i][1] + yDiff) * 19;
-            ig.game[map][place](placeArr[i][2], placeArr[i][3], placeArr[i][4], {x: placeArr[i][0] + xDiff, y: placeArr[i][1] + yDiff}, null, !0);
-            placeHistory.push([i, placeArr[i]]);
+            ig.game[player].pos.x = (placeArr[blockIndex][0] + xDiff) * 19;
+            ig.game[player].pos.y = (placeArr[blockIndex][1] + yDiff) * 19;
+            ig.game[map][place](placeArr[blockIndex][2], placeArr[blockIndex][3], placeArr[blockIndex][4], {x: placeArr[blockIndex][0] + xDiff, y: placeArr[blockIndex][1] + yDiff}, null, !0);
+            placeHistory.push([blockIndex, placeArr[blockIndex]]);
             if (placeHistory.length > 20) {
                 placeHistory.shift();
             }
@@ -713,10 +724,10 @@ async function pasteArea() {
 
 async function stopPasting() {
     ig.game.gravity = 800;
-    ig.game[player][maxVelFunc] = originalVelFunc;
-    ig.Entity[collideFunc] = originalCollideFunc;
-    window.Item.prototype[pushFunc] = originalPushFunc;
-    window.Item.prototype[diagPushFunc] = originalDiagPushFunc;
+    ig.game[player][maxVelFunc] = ig.game[player].originalVelFunc;
+    ig.Entity[collideFunc] = ig.Entity.originalCollideFunc;
+    window.Item.prototype[pushFunc] = window.Item.prototype.originalPushFunc;
+    window.Item.prototype[diagPushFunc] = window.Item.prototype.originalDiagPushFunc;
     ig.game.settings.glueWearable = false;
     getWearable(null);
     await delay(1000);
