@@ -321,7 +321,7 @@ async function scanArea() {
         // traverse downward on these sectors
         if (sectorNumber % 2 == 0) {
             // iterating through edgeArrOrganizedByY to find topmost and bottommost rows with blocks in sector
-            for (i = 0; i < edgeArrOrganizedByY.length - 1; i++) {
+            for (let i = 0; i < edgeArrOrganizedByY.length - 1; i++) {
                 firstElementInRow = edgeArrOrganizedByY[i][1][0];
                 lastElementInRow = edgeArrOrganizedByY[i][1][edgeArrOrganizedByY[i][1].length - 1];
                 if (lastElementInRow >= sectorStartX && firstElementInRow <= sectorEndX) {
@@ -329,7 +329,7 @@ async function scanArea() {
                     break;
                 }
             }
-            for (j = firstRowIndex; j < edgeArrOrganizedByY.length - 1; j++) {
+            for (let j = firstRowIndex; j < edgeArrOrganizedByY.length - 1; j++) {
                 firstElementInRow = edgeArrOrganizedByY[j][1][0];
                 lastElementInRow = edgeArrOrganizedByY[j][1][edgeArrOrganizedByY[j][1].length - 1];
                 if (lastElementInRow < sectorStartX || firstElementInRow > sectorEndX) {
@@ -431,7 +431,7 @@ async function scanArea() {
         // else traverse upward on these sectors
         } else {
             // iterating through edgeArrOrganizedByY to find topmost and bottommost rows with blocks in sector
-            for (i = edgeArrOrganizedByY.length - 1; i > 0; i--) {
+            for (let i = edgeArrOrganizedByY.length - 1; i > 0; i--) {
                 firstElementInRow = edgeArrOrganizedByY[i][1][0];
                 lastElementInRow = edgeArrOrganizedByY[i][1][edgeArrOrganizedByY[i][1].length - 1];
                 if (lastElementInRow >= sectorStartX && firstElementInRow <= sectorEndX) {
@@ -439,7 +439,7 @@ async function scanArea() {
                     break;
                 }
             }
-            for (j = firstRowIndex; j > 0; j--) {
+            for (let j = firstRowIndex; j > 0; j--) {
                 firstElementInRow = edgeArrOrganizedByY[j][1][0];
                 lastElementInRow = edgeArrOrganizedByY[j][1][edgeArrOrganizedByY[j][1].length - 1];
                 if (lastElementInRow < sectorStartX || firstElementInRow > sectorEndX) {
@@ -678,7 +678,7 @@ async function pasteArea() {
     window.Item.prototype[diagPushFunc] = function(){return false};
     getWearable("62b5eba64b4994128421214a");
     ig.game.settings.glueWearable = true;
-    switch(prompt('Enter where you want your current position to be in relation to the paste. Options are: bottom left, bottom right, top left, top right, center.', suggestedPos)) {
+    switch(prompt('Enter where you want your current position to be in relation to the paste. Options are:\\nbottom left\\nbottom right\\ntop left\\ntop right\\ncenter', suggestedPos)) {
         case "bottom left":
             ig.game[player].pos.x += bottomLeftXOffset * 19;
             ig.game[player].pos.y -= (height - 1) * 19; 
@@ -711,7 +711,7 @@ async function pasteArea() {
             }
             await delay(placeWait);
         } else {
-            i = placeHistory[0][0];
+            blockIndex = placeHistory[0][0];
             ig.game[player].pos.x = (placeHistory[0][1][0] + xDiff) * 19;
             ig.game[player].pos.y = (placeHistory[0][1][1] + yDiff) * 19;
             ig.game[map].deleteThingAt(placeHistory[0][1][0] + xDiff, placeHistory[0][1][1] + yDiff);
