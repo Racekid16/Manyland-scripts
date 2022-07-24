@@ -17,9 +17,14 @@ async function ripOffCreation() {
         selectedBlock = Deobfuscator.object(ig.game.itemContextMenu,'rotation',false);
         if (typeof selectedBlock !== 'undefined') {
             if (selectedBlock.thing?.creatorId !== null) {
-                if (typeof selectedBlock.thing.clonedFrom === 'undefined') {
-                    ig.game.player[id] = selectedBlock.thing.creatorId;
+                if (typeof selectedBlock.thing.attributes !== 'undefined') {
+                    if (typeof selectedBlock.thing.attributes.clonable !== 'undefined') {
+                        return jQuery.ajax({
+                            url: "/j/i/st/" + a
+                        })
+                    }
                 }
+                ig.game.player[id] = selectedBlock.thing.creatorId;
             }
         }
         return jQuery.ajax({
