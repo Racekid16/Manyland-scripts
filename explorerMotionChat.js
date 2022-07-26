@@ -16,9 +16,9 @@ async function explorerChat() {
     content = Deobfuscator.keyBetween(ig.game.brainManager[firstObfFunc],'f={};f.content=e.',';f.type=this.enumType.speech;f.fromId');
     useMotionClientSide = Deobfuscator.function(ig.game.attachmentManager,'var d=!1;if(a){var e=this.',true);
     useMotion = Deobfuscator.function(ig.game.websocket,'.MOTION,{mid:a,n:b})',true);
-    ig.game.nonLoggedInChatIfEditorAround = true;
     fadeText = Deobfuscator.function(ig.game.player[playerInfo][chat])
     currentlySpeaking = false;
+    ig.game.nonLoggedInChatIfEditorAround = true;
     ml.Misc.thereIsAnEditorAround = function(){return true};
     sayLetter = async function(motionId, motionName) {
         ig.game.attachmentManager[useMotionClientSide](ig.game.player,motionId,null);
