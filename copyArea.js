@@ -24,10 +24,12 @@ async function init() {
     itemEquip = Deobfuscator.function(ig.game.attachmentManager,'(c);!e&&!a.O',true);
     maxVelFunc = Deobfuscator.function(ig.game[player], '.x;this.maxVel.y=this.', true);
     thingBehindPlayer = Deobfuscator.keyBetween(ig.game[player].somethingPushingUpBehindPlayer,'return this.','&&this.O');
+    liquidFunc = Deobfuscator.function(ig.game[player],`this.${thingBehindPlayer}&&this.${thingBehindPlayer}.thing.isALiquid`,true);
     collideFunc = Deobfuscator.function(ig.Entity,'&&b instanceof EntityCrumbling||b.',true);
     pushFunc = Deobfuscator.function(window.Item.prototype,'Item.prototype.BASE_TYPES[this.base]==Item.prototype.BASE_TYPES.PUSH',true);
     diagPushFunc = Deobfuscator.function(window.Item.prototype,'Item.prototype.BASE_TYPES[this.base]==Item.prototype.BASE_TYPES.PUSHDIAG',true);
     ig.game[player].originalVelFunc = ig.game[player][maxVelFunc];
+    ig.game[player].originalLiquidFunc = ig.game[player][liquidFunc];
     ig.Entity.originalCollideFunc = ig.Entity[collideFunc];
     window.Item.prototype.originalPushFunc = window.Item.prototype[pushFunc];
     window.Item.prototype.originalDiagPushFunc = window.Item.prototype[diagPushFunc];
@@ -259,7 +261,6 @@ function calculateOffset() {
 
 async function moveToStart() {
     ig.game.gravity = 0;
-    // prevents getting pushed by pushings/liquid/other things like that
     ig.game[player][maxVelFunc] = function() {
         this.maxVel.x = 0;
         this.maxVel.y = 0;
@@ -268,6 +269,8 @@ async function moveToStart() {
     window.Item.prototype[diagPushFunc] = function(){return false};
     // prevents getting moved by solid dynamics/interactings/other things like that
     ig.Entity[collideFunc] = function(){};
+    // prevents getting moved by liquids
+    ig.game[player][liquidFunc] = function(){return false};
     // prevents getting moved by interactings, transportings, and grabbing dynamics
     getWearable("62b5eba64b4994128421214a");
     ig.game.settings.glueWearable = true;
@@ -553,6 +556,7 @@ async function scanArea() {
 async function stopScanning() {
     ig.game.gravity = 800;
     ig.game[player][maxVelFunc] = ig.game[player].originalVelFunc;
+    ig.game[player][liquidFunc] = ig.game[player].originalLiquidFunc;
     ig.Entity[collideFunc] = ig.Entity.originalCollideFunc;
     window.Item.prototype[pushFunc] = window.Item.prototype.originalPushFunc;
     window.Item.prototype[diagPushFunc] = window.Item.prototype.originalDiagPushFunc;
