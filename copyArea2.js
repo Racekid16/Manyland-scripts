@@ -23,8 +23,14 @@ async function copyArea() {
     waitForNextBlock = false;
     placeDelay = 35;
     callCount = 0;
-    xOffset = 0;
-    yOffset = 0;
+    offset = {
+        x: 0,
+        y: 0
+    }
+    areaCenterLocation = {
+        x: 15,
+        y: 15
+    }
     placeHistory = [];
     ig.game.gravity = 0;
     ig.game.player.kill = function(){};
@@ -80,12 +86,14 @@ async function copyArea() {
         area = parseInt(area);
         areaId = area;
         if (areaId == 3) {
-            xOffset = 15;
-            yOffset = 66;
+            areaCenterLocation.x = 0;
+            areaCenterLocation.y = -50;
         }
     } else if (area == 'inner ring') {
         plane = 2;
         areaId = 1;
+        areaCenterLocation.x = 477;
+        areaCenterLocation.y = -327;
     } else {
         plane = 0;
         areaInformation = await jQuery.ajax({
@@ -101,27 +109,35 @@ async function copyArea() {
         });
         areaId = areaInformation.aid;
     }
+    offset.x = 15 - areaCenterLocation.x;
+    offset.y = 15 - areaCenterLocation.y;
     await delay(500);
     topLeftCoordsResponse = prompt("Specify the top left coordinates of the section to copy", "-100,-100").replaceAll(' ','').split(',').map(Number);
     topLeftCoords = {
-        x: topLeftCoordsResponse[0] + 15,
-        y: topLeftCoordsResponse[1] + 15
-    }
-    startSector = [Math.floor(topLeftCoords.x + 15 / 32), Math.floor(topLeftCoords.y / 32)];
+        x: topLeftCoordsResponse[0] + areaCenterLocation.x,
+        y: topLeftCoordsResponse[1] + areaCenterLocation.y
+    };
+    startSector = {
+        x: Math.floor(topLeftCoords.x / 32), 
+        y: Math.floor(topLeftCoords.y / 32)
+    };
     await delay(500);
     bottomRightCoordsResponse = prompt("Specify the bottom right coordinates of the section to copy", "100,100").replaceAll(' ','').split(',').map(Number);
     bottomRightCoords = {
-        x: bottomRightCoordsResponse[0] + 15,
-        y: bottomRightCoordsResponse[1] + 15
-    }
-    endSector = [Math.floor(bottomRightCoords.x / 32), Math.floor(bottomRightCoords.y / 32)];
-    if (startSector[0] > endSector[0] || startSector[1] > endSector[1]) {
+        x: bottomRightCoordsResponse[0] + areaCenterLocation.x,
+        y: bottomRightCoordsResponse[1] + areaCenterLocation.y
+    };
+    endSector = {
+        x: Math.floor(bottomRightCoords.x / 32), 
+        y: Math.floor(bottomRightCoords.y / 32)
+    };
+    if (startSector.x > endSector.x || startSector.y > endSector.y) {
         ig.game.player.say("invalid coordinates!")
         return;
     }
     await delay(1000);
-    for (sectorY = startSector[1]; sectorY <= endSector[1]; sectorY++) {
-        for (sectorX = startSector[0]; sectorX <= endSector[0]; sectorX++) {
+    for (sectorY = startSector.y; sectorY <= endSector.y; sectorY++) {
+        for (sectorX = startSector.x; sectorX <= endSector.x; sectorX++) {
             sectorInformation = await jQuery.ajax({
                 type: "POST",
                 url: "/j/m/s/",
@@ -136,23 +152,23 @@ async function copyArea() {
             }
             sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] !== null && block[1] !== null && block[2] !== null && block[3] !== null && block[4] !== null);
             if (sectorX * 32 < topLeftCoords.x) {
-                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX + xOffset >= topLeftCoords.x);
+                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX >= topLeftCoords.x);
             }
             if ((sectorX + 1) * 32 - 1 > bottomRightCoords.x) {
-                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX + xOffset <= bottomRightCoords.x);
+                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX <= bottomRightCoords.x);
             }
             if (sectorY * 32 < topLeftCoords.y) {
-                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY + yOffset >= topLeftCoords.y);
+                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY >= topLeftCoords.y);
             }
             if ((sectorY + 1) * 32 - 1 > bottomRightCoords.y) {
-                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY + yOffset <= bottomRightCoords.y);
+                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY <= bottomRightCoords.y);
             }
             for (blockIndex = 0; blockIndex < sectorInformation[0].ps.length; blockIndex++) {
                 if (!tired) {
                     currentBlock = sectorInformation[0].ps[blockIndex];
                     blockPos = {
-                        x: currentBlock[0] + 32 * sectorX + xOffset,
-                        y: currentBlock[1] + 32 * sectorY + yOffset
+                        x: currentBlock[0] + 32 * sectorX + offset.x,
+                        y: currentBlock[1] + 32 * sectorY + offset.y
                     }
                     if (distanceToNextBlock(blockPos.x, blockPos.y) > 60) {
                         waitForNextBlock = true;
@@ -184,16 +200,16 @@ async function copyArea() {
                         });
                         sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] !== null && block[1] !== null && block[2] !== null && block[3] !== null && block[4] !== null);
                         if (sectorX * 32 < topLeftCoords.x) {
-                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX + xOffset >= topLeftCoords.x);
+                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX >= topLeftCoords.x);
                         }
                         if ((sectorX + 1) * 32 - 1 > bottomRightCoords.x) {
-                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX + xOffset <= bottomRightCoords.x);
+                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX <= bottomRightCoords.x);
                         }
                         if (sectorY * 32 < topLeftCoords.y) {
-                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY + yOffset >= topLeftCoords.y);
+                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY >= topLeftCoords.y);
                         }
                         if ((sectorY + 1) * 32 - 1 > bottomRightCoords.y) {
-                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY + yOffset <= bottomRightCoords.y);
+                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY <= bottomRightCoords.y);
                         }
                     }
                     sectorX = placeHistory[0][0];
@@ -201,8 +217,8 @@ async function copyArea() {
                     blockIndex = placeHistory[0][2];
                     currentBlock = sectorInformation[0].ps[blockIndex];
                     blockPos = {
-                        x: currentBlock[0] + 32 * sectorX + xOffset,
-                        y: currentBlock[1] + 32 * sectorY + yOffset
+                        x: currentBlock[0] + 32 * sectorX + offset.x,
+                        y: currentBlock[1] + 32 * sectorY + offset.y
                     }
                     ig.game.player.pos.x = blockPos.x * 19;
                     ig.game.player.pos.y = blockPos.y * 19;
