@@ -28,7 +28,7 @@ async function copyArea() {
     tired = false;
     alreadyStopped = false;
     waitForNextBlock = false;
-    placeDelay = 10;
+    placeDelay = 35;
     callCount = 0;
     offset = {
         x: 0,
