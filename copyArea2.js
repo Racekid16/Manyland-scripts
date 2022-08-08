@@ -1,5 +1,3 @@
-//c's improved copy area
-
 // improved copy script eliminates the need to scan beforehand.
 // directly requests block data from the server- much faster
 // first specify the world you want to copy
@@ -104,11 +102,19 @@ async function copyArea() {
         areaId = areaInformation.aid;
     }
     await delay(500);
-    topLeftCoords = prompt("Specify the top left coordinates of the section to copy", "-100,-100").replaceAll(' ','').split(',').map(Number);
-    startSector = [Math.floor(topLeftCoords[0] / 32), Math.floor(topLeftCoords[1] / 32)];
+    topLeftCoordsResponse = prompt("Specify the top left coordinates of the section to copy", "-100,-100").replaceAll(' ','').split(',').map(Number);
+    topLeftCoords = {
+        x: topLeftCoordsResponse[0] + 15,
+        y: topLeftCoordsResponse[1] + 15
+    }
+    startSector = [Math.floor(topLeftCoords.x + 15 / 32), Math.floor(topLeftCoords.y / 32)];
     await delay(500);
-    bottomRightCoords = prompt("Specify the bottom right coordinates of the section to copy", "100,100").replaceAll(' ','').split(',').map(Number);
-    endSector = [Math.floor(bottomRightCoords[0] / 32), Math.floor(bottomRightCoords[1] / 32)];
+    bottomRightCoordsResponse = prompt("Specify the bottom right coordinates of the section to copy", "100,100").replaceAll(' ','').split(',').map(Number);
+    bottomRightCoords = {
+        x: bottomRightCoordsResponse[0] + 15,
+        y: bottomRightCoordsResponse[1] + 15
+    }
+    endSector = [Math.floor(bottomRightCoords.x / 32), Math.floor(bottomRightCoords.y / 32)];
     if (startSector[0] > endSector[0] || startSector[1] > endSector[1]) {
         ig.game.player.say("invalid coordinates!")
         return;
@@ -129,6 +135,18 @@ async function copyArea() {
                 continue;
             }
             sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] !== null && block[1] !== null && block[2] !== null && block[3] !== null && block[4] !== null);
+            if (sectorX * 32 < topLeftCoords.x) {
+                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX + xOffset >= topLeftCoords.x);
+            }
+            if ((sectorX + 1) * 32 - 1 > bottomRightCoords.x) {
+                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX + xOffset <= bottomRightCoords.x);
+            }
+            if (sectorY * 32 < topLeftCoords.y) {
+                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY + yOffset >= topLeftCoords.y);
+            }
+            if ((sectorY + 1) * 32 - 1 > bottomRightCoords.y) {
+                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY + yOffset <= bottomRightCoords.y);
+            }
             for (blockIndex = 0; blockIndex < sectorInformation[0].ps.length; blockIndex++) {
                 if (!tired) {
                     currentBlock = sectorInformation[0].ps[blockIndex];
@@ -164,6 +182,19 @@ async function copyArea() {
                                 a: areaId
                             }
                         });
+                        sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] !== null && block[1] !== null && block[2] !== null && block[3] !== null && block[4] !== null);
+                        if (sectorX * 32 < topLeftCoords.x) {
+                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX + xOffset >= topLeftCoords.x);
+                        }
+                        if ((sectorX + 1) * 32 - 1 > bottomRightCoords.x) {
+                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX + xOffset <= bottomRightCoords.x);
+                        }
+                        if (sectorY * 32 < topLeftCoords.y) {
+                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY + yOffset >= topLeftCoords.y);
+                        }
+                        if ((sectorY + 1) * 32 - 1 > bottomRightCoords.y) {
+                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY + yOffset <= bottomRightCoords.y);
+                        }
                     }
                     sectorX = placeHistory[0][0];
                     sectorY = placeHistory[0][1];
