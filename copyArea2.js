@@ -33,11 +33,11 @@ async function copyArea() {
     offset = {
         x: 0,
         y: 0
-    }
+    };
     areaCenterLocation = {
         x: 15,
         y: 15
-    }
+    };
     placeHistory = [];
     ig.game.gravity = 0;
     ig.game.player.kill = function(){};
@@ -60,7 +60,7 @@ async function copyArea() {
     getWearable("62b5eba64b4994128421214a");
     distanceToNextBlock = function(blockX, blockY) {
         return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
-    }
+    };
     ig.game.errorManager.kicked = function(a){
         if (blockIndex > 10) {
             alert(`You got an info rift. 
@@ -263,6 +263,8 @@ async function copyArea() {
     }
     ig.game.gravity = 800;
     getWearable(null);
+    ig.game.errorManager.kicked = ig.game.errorManager.originalKickedFunc;
+    ig.game.player.say("finished copying!");    
 }
 
 copyArea();
