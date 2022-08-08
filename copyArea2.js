@@ -1,5 +1,7 @@
+//c's improved copy area
+
 // improved copy script eliminates the need to scan beforehand.
-// directly loads block data from the server- much faster
+// directly requests block data from the server- much faster
 // first specify the world you want to copy
 // then specify the coordinates of the top left block in the area you want to copy
 // then specify the coordinates of the bottom right block in the area you want to copy
@@ -152,7 +154,7 @@ async function copyArea() {
                     }
                     await delay(placeDelay);
                 } else {
-                    if (blockIndex != placeHistory[0][2] || sectorX != placeHistory[0][0] || sectorY != placeHistory[0][1] ) {
+                    if (sectorX != placeHistory[0][0] || sectorY != placeHistory[0][1] ) {
                         sectorInformation = await jQuery.ajax({
                             type: "POST",
                             url: "/j/m/s/",
