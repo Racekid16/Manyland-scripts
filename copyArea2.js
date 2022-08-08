@@ -3,7 +3,8 @@
 // first specify the world you want to copy
 // then specify the coordinates of the top left block in the area you want to copy
 // then specify the coordinates of the bottom right block in the area you want to copy
-// a rectangular area at least as big as you specified will be copied
+// a rectangular formed by the coordinates you specified will be copied
+// note- 0,0 corresponds to the area's center location
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
@@ -41,13 +42,6 @@ async function copyArea() {
     placeHistory = [];
     ig.game.gravity = 0;
     ig.game.player.kill = function(){};
-    setInterval(() => {
-        playerPos = {
-            x: Math.round(ig.game.player.pos.x / 19),
-            y: Math.round(ig.game.player.pos.y / 19)
-        }
-    }, 0);
-    await delay(500);
     getWearable = async function(id) {
         if (typeof ig.game.player.attachments.w == 'undefined' || ig.game.player.attachments?.w === null) {
             ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
@@ -56,10 +50,6 @@ async function copyArea() {
             await delay(100);
             ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
         }
-    };
-    getWearable("62b5eba64b4994128421214a");
-    distanceToNextBlock = function(blockX, blockY) {
-        return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
     };
     ig.game.errorManager.kicked = function(a){
         if (blockIndex > 10) {
@@ -101,12 +91,25 @@ async function copyArea() {
             tired = false;
         }
     }
+    setInterval(() => {
+        playerPos = {
+            x: Math.round(ig.game.player.pos.x / 19),
+            y: Math.round(ig.game.player.pos.y / 19)
+        }
+    }, 0);
+    await delay(500);
+    distanceToNextBlock = function(blockX, blockY) {
+        return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
+    };
     area = prompt("Enter the name of the world you'd like to copy: ","3");
     if (area == '1' || area == '2' || area == '3' || area == '4' || area == '5' || area == '6' || area == '7' || area == '8') {
         plane = 1;
         area = parseInt(area);
         areaId = area;
-        if (areaId == 3) {
+        if (areaId == 1) {
+            areaCenterLocation.x = 477;
+            areaCenterLocation.y = -327;
+        } else if (areaId == 2 || areaId == 3 || areaId == 4) {
             areaCenterLocation.x = 0;
             areaCenterLocation.y = -50;
         }
@@ -156,6 +159,7 @@ async function copyArea() {
         ig.game.player.say("invalid coordinates!")
         return;
     }
+    getWearable("62b5eba64b4994128421214a");
     await delay(1000);
     for (sectorY = startSector.y; sectorY <= endSector.y; sectorY++) {
         if (differentStartY) {
@@ -251,12 +255,21 @@ async function copyArea() {
                         x: currentBlock[0] + 32 * sectorX + offset.x,
                         y: currentBlock[1] + 32 * sectorY + offset.y
                     }
-                    ig.game.player.pos.x = blockPos.x * 19;
-                    ig.game.player.pos.y = blockPos.y * 19;
-                    await delay(400);
+                    if (distanceToNextBlock(blockPos.x, blockPos.y) > 60) {
+                        waitForNextBlock = true;
+                    }
+                    ig.game.player.pos = {
+                        x: blockPos.x * 19,
+                        y: blockPos.y * 19
+                    };
+                    if (waitForNextBlock) {
+                        await delay(2000);
+                        waitForNextBlock = false;
+                    }
                     ig.game[map].deleteThingAt(blockPos.x, blockPos.y);
                     await delay(100);
                     ig.game[map][place](sectorInformation[0].iix[currentBlock[2]], currentBlock[3], currentBlock[4], {x: blockPos.x, y: blockPos.y}, null, !0);
+                    await delay(400);
                 }
             }
         }
