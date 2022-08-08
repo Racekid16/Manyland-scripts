@@ -15,13 +15,20 @@ async function getDeobfuscator() {
 
 async function copyArea() {
     await getDeobfuscator();
+    // if continuing where you left off, change sectorStarX and sectorStartY to appropriate values
+    // and set differentStartX and differentStartY to true.
+    sectorStartX = 0;
+    sectorStartY = 0;
+    differentStartX = false;
+    differentStartY = false;
     itemEquip = Deobfuscator.function(ig.game.attachmentManager,'(c);!e&&!a.O',true);
     map = Deobfuscator.object(ig.game,'queuePerformDelayMs',true);
     place = Deobfuscator.function(ig.game[map],'n:b||0,flip:c},d,!',true);
+    ig.game.errorManager.originalKickedFunc = ig.game.errorManager.kicked;
     tired = false;
     alreadyStopped = false;
     waitForNextBlock = false;
-    placeDelay = 35;
+    placeDelay = 10;
     callCount = 0;
     offset = {
         x: 0,
@@ -53,6 +60,20 @@ async function copyArea() {
     getWearable("62b5eba64b4994128421214a");
     distanceToNextBlock = function(blockX, blockY) {
         return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
+    }
+    ig.game.errorManager.kicked = function(a){
+        if (blockIndex > 10) {
+            alert(`You got an info rift. 
+            sectorX: ${sectorX}
+            sectorY: ${sectorY}
+            blockIndex: ${blockIndex - 10}`);
+        } else {
+            alert(`You got an info rift. 
+            sectorX: ${sectorX}
+            sectorY: ${sectorY}
+            blockIndex: 0`);
+        }
+        ig.game.errorManager.originalKickedFunc(a);
     }
     if (typeof keyboard === 'undefined') {
         keyboard = Deobfuscator.object(ig.game,'isSpeaking',true);
@@ -137,7 +158,17 @@ async function copyArea() {
     }
     await delay(1000);
     for (sectorY = startSector.y; sectorY <= endSector.y; sectorY++) {
+        if (differentStartY) {
+            sectorY = sectorStartY - 1;
+            differentStartY = false;
+            continue;
+        }
         for (sectorX = startSector.x; sectorX <= endSector.x; sectorX++) {
+            if (differentStartX) {
+                sectorX = sectorStartX - 1;
+                differentStartX = false;
+                continue;
+            }
             sectorInformation = await jQuery.ajax({
                 type: "POST",
                 url: "/j/m/s/",
