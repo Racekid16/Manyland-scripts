@@ -21,8 +21,10 @@ async function copyArea() {
     tired = false;
     alreadyStopped = false;
     waitForNextBlock = false;
-    placeDelay = 30;
+    placeDelay = 35;
     callCount = 0;
+    xOffset = 0;
+    yOffset = 0;
     placeHistory = [];
     ig.game.gravity = 0;
     ig.game.player.kill = function(){};
@@ -77,6 +79,10 @@ async function copyArea() {
         plane = 1;
         area = parseInt(area);
         areaId = area;
+        if (areaId == 3) {
+            xOffset = 15;
+            yOffset = 66;
+        }
     } else if (area == 'inner ring') {
         plane = 2;
         areaId = 1;
@@ -106,8 +112,8 @@ async function copyArea() {
         return;
     }
     await delay(1000);
-    for (sectorY = startSector[1]; sectorY < endSector[1]; sectorY++) {
-        for (sectorX = startSector[0]; sectorX < endSector[0]; sectorX++) {
+    for (sectorY = startSector[1]; sectorY <= endSector[1]; sectorY++) {
+        for (sectorX = startSector[0]; sectorX <= endSector[0]; sectorX++) {
             sectorInformation = await jQuery.ajax({
                 type: "POST",
                 url: "/j/m/s/",
@@ -125,8 +131,8 @@ async function copyArea() {
                 if (!tired) {
                     currentBlock = sectorInformation[0].ps[blockIndex];
                     blockPos = {
-                        x: currentBlock[0] + 32 * sectorX,
-                        y: currentBlock[1] + 32 * sectorY
+                        x: currentBlock[0] + 32 * sectorX + xOffset,
+                        y: currentBlock[1] + 32 * sectorY + yOffset
                     }
                     if (distanceToNextBlock(blockPos.x, blockPos.y) > 60) {
                         waitForNextBlock = true;
@@ -136,7 +142,7 @@ async function copyArea() {
                         y: blockPos.y * 19
                     };
                     if (waitForNextBlock) {
-                        await delay(500);
+                        await delay(2000);
                         waitForNextBlock = false;
                     }
                     ig.game[map][place](sectorInformation[0].iix[currentBlock[2]], currentBlock[3], currentBlock[4], {x: blockPos.x, y: blockPos.y}, null, !0);
@@ -162,8 +168,8 @@ async function copyArea() {
                     blockIndex = placeHistory[0][2];
                     currentBlock = sectorInformation[0].ps[blockIndex];
                     blockPos = {
-                        x: currentBlock[0] + 32 * sectorX,
-                        y: currentBlock[1] + 32 * sectorY
+                        x: currentBlock[0] + 32 * sectorX + xOffset,
+                        y: currentBlock[1] + 32 * sectorY + yOffset
                     }
                     ig.game.player.pos.x = blockPos.x * 19;
                     ig.game.player.pos.y = blockPos.y * 19;
