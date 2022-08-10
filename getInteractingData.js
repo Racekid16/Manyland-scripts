@@ -11,6 +11,7 @@ async function getDeobfuscator() {
 
 async function getinteractingData() {
     await getDeobfuscator();
+    ig.game.player.kill = function(){};
     interactingData = new Map();
     centerLoc = {
         x: 15,
