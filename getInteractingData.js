@@ -1,5 +1,6 @@
 // automatically collects the id, name, text data, and map location of the placements of all interactings in the specified world and section
 // note: 0,0 corresponds to the area's center location
+// can JSON.stringify the interacting data, save it to a .txt file, then JSON.parse it to read it again later
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
@@ -12,7 +13,7 @@ async function getDeobfuscator() {
 async function getinteractingData() {
     await getDeobfuscator();
     ig.game.player.kill = function(){};
-    interactingData = new Map();
+    interactingData = {};
     centerLoc = {
         x: 15,
         y: 15
@@ -148,6 +149,11 @@ async function getinteractingData() {
             }
         }
     }
+    // global interacting will be the first id if there is one
+    // then it will in the order of highest placement count to lowest placement count
+    // so for example interactingData[mostPlacedInteractings[1]] should return the information on the most placed interacting
+    mostPlacedInteractings = Object.keys(interactingData)
+    .sort((key1, key2) => interactingData[key2].placementCount - interactingData[key1].placementCount)
     ig.game.player.say("finished gathering interacting information!");    
     consoleref.log(interactingData);
 }
