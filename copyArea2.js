@@ -4,7 +4,7 @@
 // then specify the coordinates of the top left block in the area you want to copy
 // then specify the coordinates of the bottom right block in the area you want to copy
 // a rectangular formed by the coordinates you specified will be copied
-// note- 0,0 corresponds to the area's center location
+// note: 0,0 corresponds to the area's center location
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
@@ -35,7 +35,7 @@ async function copyArea() {
         x: 0,
         y: 0
     };
-    areaCenterLocation = {
+    centerLoc = {
         x: 15,
         y: 15
     };
@@ -107,17 +107,17 @@ async function copyArea() {
         area = parseInt(area);
         areaId = area;
         if (areaId == 1) {
-            areaCenterLocation.x = 477;
-            areaCenterLocation.y = -327;
+            centerLoc.x = 477;
+            centerLoc.y = -327;
         } else if (areaId == 2 || areaId == 3 || areaId == 4) {
-            areaCenterLocation.x = 0;
-            areaCenterLocation.y = -50;
+            centerLoc.x = 0;
+            centerLoc.y = -50;
         }
     } else if (area == 'inner ring') {
         plane = 2;
         areaId = 1;
-        areaCenterLocation.x = 477;
-        areaCenterLocation.y = -327;
+        centerLoc.x = 477;
+        centerLoc.y = -327;
     } else {
         plane = 0;
         areaInformation = await jQuery.ajax({
@@ -133,13 +133,13 @@ async function copyArea() {
         });
         areaId = areaInformation.aid;
     }
-    offset.x = 15 - areaCenterLocation.x;
-    offset.y = 15 - areaCenterLocation.y;
+    offset.x = ig.game.areaCenterLocation.x - centerLoc.x;
+    offset.y = ig.game.areaCenterLocation.y - centerLoc.y;
     await delay(500);
     topLeftCoordsResponse = prompt("Specify the top left coordinates of the section to copy", "-100,-100").replaceAll(' ','').split(',').map(Number);
     topLeftCoords = {
-        x: topLeftCoordsResponse[0] + areaCenterLocation.x,
-        y: topLeftCoordsResponse[1] + areaCenterLocation.y
+        x: topLeftCoordsResponse[0] + centerLoc.x,
+        y: topLeftCoordsResponse[1] + centerLoc.y
     };
     startSector = {
         x: Math.floor(topLeftCoords.x / 32), 
@@ -148,8 +148,8 @@ async function copyArea() {
     await delay(500);
     bottomRightCoordsResponse = prompt("Specify the bottom right coordinates of the section to copy", "100,100").replaceAll(' ','').split(',').map(Number);
     bottomRightCoords = {
-        x: bottomRightCoordsResponse[0] + areaCenterLocation.x,
-        y: bottomRightCoordsResponse[1] + areaCenterLocation.y
+        x: bottomRightCoordsResponse[0] + centerLoc.x,
+        y: bottomRightCoordsResponse[1] + centerLoc.y
     };
     endSector = {
         x: Math.floor(bottomRightCoords.x / 32), 
@@ -157,6 +157,8 @@ async function copyArea() {
     };
     if (startSector.x > endSector.x || startSector.y > endSector.y) {
         ig.game.player.say("invalid coordinates!")
+        getWearable(null);
+        ig.game.errorManager.kicked = ig.game.errorManager.originalKickedFunc;
         return;
     }
     getWearable("62b5eba64b4994128421214a");
@@ -204,7 +206,7 @@ async function copyArea() {
                     blockPos = {
                         x: currentBlock[0] + 32 * sectorX + offset.x,
                         y: currentBlock[1] + 32 * sectorY + offset.y
-                    }
+                    };
                     if (distanceToNextBlock(blockPos.x, blockPos.y) > 60) {
                         waitForNextBlock = true;
                     }
@@ -254,7 +256,7 @@ async function copyArea() {
                     blockPos = {
                         x: currentBlock[0] + 32 * sectorX + offset.x,
                         y: currentBlock[1] + 32 * sectorY + offset.y
-                    }
+                    };
                     if (distanceToNextBlock(blockPos.x, blockPos.y) > 60) {
                         waitForNextBlock = true;
                     }
