@@ -13,7 +13,10 @@ async function getDeobfuscator() {
 async function getinteractingData() {
     await getDeobfuscator();
     ig.game.player.kill = function(){};
+    sectorArray = [];
     interactingData = {};
+    sectorChunkSize = 64;
+    sectorChunkArray = [];
     centerLoc = {
         x: 15,
         y: 15
@@ -61,7 +64,6 @@ async function getinteractingData() {
             };
         }
         globalInteractingId = areaInformation.iid;
-
     }
     await delay(500);
     topLeftCoordsResponse = prompt("Specify the top left coordinates of the section", "-100,-100").replaceAll(' ','').split(',').map(Number);
@@ -89,34 +91,50 @@ async function getinteractingData() {
     }
     for (sectorY = startSector.y; sectorY <= endSector.y; sectorY++) {
         for (sectorX = startSector.x; sectorX <= endSector.x; sectorX++) {
-            sectorInformation = await jQuery.ajax({
-                type: "POST",
-                url: "/j/m/s/",
-                data: {
-                    s: JSON.stringify([[sectorX,sectorY]]),
-                    p: plane,
-                    a: areaId
-                }
-            });
-            if (sectorInformation.length === 0) {
+            sectorArray.push([sectorX,sectorY]);
+        }
+    }
+    if (sectorArray.length > sectorChunkSize) {
+        for (let i = 0; i < sectorArray.length; i+= sectorChunkSize) {
+            if (i + sectorChunkSize < sectorArray.length) {
+                sectorChunkArray.push(sectorArray.slice(i, i + sectorChunkSize));
+            } else {
+                sectorChunkArray.push(sectorArray.slice(i, sectorArray.length))
+            }
+        }
+    }
+    for (sectorChunkIndex = 0; sectorChunkIndex < sectorChunkArray.length; sectorChunkIndex++) {
+        ig.game.player.say("loading sector data...");
+        sectorsBlockData = await jQuery.ajax({
+            type: "POST",
+            url: "/j/m/s/",
+            data: {
+                s: JSON.stringify(sectorChunkArray[sectorChunkIndex]),
+                p: plane,
+                a: areaId
+            }
+        });
+        ig.game.player.say("sector data loaded!");
+        for (sectorIndex = 0; sectorIndex < sectorsBlockData.length; sectorIndex++) {
+            sectorData = sectorsBlockData[sectorIndex];
+            sectorX = sectorData.x;
+            sectorY = sectorData.y;
+            if (!sectorData.i.b.includes("INTERACT")) {
                 continue;
             }
-            if (!sectorInformation[0].i.b.includes("INTERACT")) {
-                continue;
-            }
-            for (blockIndex = 0; blockIndex < sectorInformation[0].ps.length; blockIndex++) {
-                currentBlock = sectorInformation[0].ps[blockIndex];
-                if (sectorInformation[0].i.b[currentBlock[2]] == "INTERACT") {
-                    if (typeof interactingData[sectorInformation[0].iix[currentBlock[2]]] === 'undefined') {
+            for (blockIndex = 0; blockIndex < sectorData.ps.length; blockIndex++) {
+                currentBlock = sectorData.ps[blockIndex];
+                if (sectorData.i.b[currentBlock[2]] == "INTERACT") {
+                    if (typeof interactingData[sectorData.iix[currentBlock[2]]] === 'undefined') {
                         blockData = await jQuery.ajax({
-                            url: "/j/i/def/" + sectorInformation[0].iix[currentBlock[2]],
+                            url: "/j/i/def/" + sectorData.iix[currentBlock[2]],
                             context: null
                         });
                         interactingText = blockData.prop.textData.toLowerCase();
                         /* if you want to only collect info on interactings whose text contains certain substrings
                         uncomment the commented lines */
                         //if (interactingText.includes("/to ") || interactingText.includes("isn't [editor]") || interactingText.includes("is [editor]") || interactingText.includes("/lock ")) {
-                            interactingData[sectorInformation[0].iix[currentBlock[2]]] = {
+                            interactingData[sectorData.iix[currentBlock[2]]] = {
                                 name: blockData.name,
                                 text: interactingText,
                                 placements: [],
@@ -129,19 +147,19 @@ async function getinteractingData() {
                         y: currentBlock[1] + 32 * sectorY
                     };
                     /* if only collecting info on interactings that contain specific substrings, uncomment the following lines */
-                    //if (typeof interactingData[sectorInformation[0].iix[currentBlock[2]]] !== 'undefined') {
+                    //if (typeof interactingData[sectorData.iix[currentBlock[2]]] !== 'undefined') {
                         if (currentBlock[0] !== null && currentBlock[1] !== null) {
                             placerInfo = await jQuery.ajax({
                                 url: "/j/m/placer/" + blockPos.x + "/" + blockPos.y + "/" + plane + "/" + areaId,
                                 context: null
                             });
-                            interactingData[sectorInformation[0].iix[currentBlock[2]]].placements.push({
+                            interactingData[sectorData.iix[currentBlock[2]]].placements.push({
                                 x: blockPos.x, 
                                 y: blockPos.y,
                                 placerId: placerInfo.id,
                                 placerName: placerInfo.name
                             });
-                            interactingData[sectorInformation[0].iix[currentBlock[2]]].placementCount++;
+                            interactingData[sectorData.iix[currentBlock[2]]].placementCount++;
                             ig.game.player.say("interacting found!");
                         }
                     //}
@@ -149,11 +167,13 @@ async function getinteractingData() {
             }
         }
     }
-    // global interacting will be the first id if there is one
-    // then it will in the order of highest placement count to lowest placement count
-    // so for example interactingData[mostPlacedInteractings[1]] should return the information on the most placed interacting
+    /* global interacting will be the first id if there is one
+    then it will in the order of highest placement count to lowest placement count
+    so mostPlacedInteractings[1] should be the id of the most placed interacting, 
+    and mostPlacedInteractins[mostPlacedInteractings.length - 1] should be the id of the least placed interacting.
+    as such, interactingData[mostPlacedInteractings[1]] for example should return the information on the most placed interacting */
     mostPlacedInteractings = Object.keys(interactingData)
-    .sort((key1, key2) => interactingData[key2].placementCount - interactingData[key1].placementCount)
+    .sort((key1, key2) => interactingData[key2].placementCount - interactingData[key1].placementCount);
     ig.game.player.say("finished gathering interacting information!");    
     consoleref.log(interactingData);
 }
