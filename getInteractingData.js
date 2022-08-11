@@ -1,5 +1,6 @@
 // automatically collects the id, name, text data, and map location of the placements of all interactings in the specified area and section
-// note: 0,0 corresponds to the area's center location
+// note: when specifying the area to search, 0,0 corresponds to the area's center location
+// but the given coordinates of each interacting's location is its real location in the area
 // can JSON.stringify the interacting data, save it to a .txt file, then JSON.parse it to read it again later
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
@@ -68,7 +69,6 @@ async function getinteractingData() {
                 text: blockData.prop.textData.toLowerCase()
             };
         }
-        globalInteractingId = areaInformation.iid;
     }
     await delay(500);
     topLeftCoordsResponse = prompt("Specify the top left coordinates of the section", "-100,-100").replaceAll(' ','').split(',').map(Number);
