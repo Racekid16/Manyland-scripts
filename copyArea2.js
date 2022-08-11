@@ -5,6 +5,7 @@
 // then specify the coordinates of the bottom right block in the area you want to copy
 // a rectangular formed by the coordinates you specified will be copied
 // note: 0,0 corresponds to the area's center location
+// if sectors keep failing to load, decrease the value of sectorChunkSize.
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
@@ -103,7 +104,7 @@ async function copyArea() {
     distanceToNextBlock = function(blockX, blockY) {
         return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
     };
-    area = prompt("Enter the name of the area you'd like to copy: ","3");
+    area = prompt("Enter the name of the area whose bodies you'd like to inspect: ","3").replace(/\s+/g, '');
     if (area == '1' || area == '2' || area == '3' || area == '4' || area == '5' || area == '6' || area == '7' || area == '8') {
         plane = 1;
         area = parseInt(area);
@@ -123,7 +124,7 @@ async function copyArea() {
     } else {
         plane = 0;
         try {
-            areaInformation = await jQuery.ajax({
+            areaData = await jQuery.ajax({
                 headers: {
                     "cache-control": "no-cache"
                 },
@@ -138,7 +139,7 @@ async function copyArea() {
             ig.game.player.say("invalid area name!");
             return;
         }
-        areaId = areaInformation.aid;
+        areaId = areaData.aid;
     }
     offset.x = ig.game.areaCenterLocation.x - centerLoc.x;
     offset.y = ig.game.areaCenterLocation.y - centerLoc.y;
@@ -218,6 +219,9 @@ async function copyArea() {
                 sectorLoaded = false;
                 ig.game.player.say("failed to load sector. retrying...");
             }
+        }
+        if (sectorChunkData.length == 0) {
+            continue;
         }
         ig.game.gravity = 0;
         for (sectorIndex = 0; sectorIndex < sectorChunkData.length; sectorIndex++) {
