@@ -2,6 +2,7 @@
 // note: when specifying the area to search, 0,0 corresponds to the area's center location
 // but the given coordinates of each interacting's location is its real location in the area
 // can JSON.stringify the interacting data, save it to a .txt file, then JSON.parse it to read it again later
+// if sectors keep failing to load, decrease the value of sectorChunkSize.
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
@@ -11,7 +12,7 @@ async function getDeobfuscator() {
     }
 };
 
-async function getinteractingData() {
+async function getInteractingData() {
     await getDeobfuscator();
     ig.game.player.kill = function(){};
     sectorArray = [];
@@ -104,7 +105,7 @@ async function getinteractingData() {
             if (i + sectorChunkSize < sectorArray.length) {
                 sectorChunkArray.push(sectorArray.slice(i, i + sectorChunkSize));
             } else {
-                sectorChunkArray.push(sectorArray.slice(i, sectorArray.length))
+                sectorChunkArray.push(sectorArray.slice(i, sectorArray.length));
             }
         }
     } else {
@@ -132,6 +133,9 @@ async function getinteractingData() {
                 sectorLoaded = false;
                 ig.game.player.say("failed to load sector. retrying...");
             }
+        }
+        if (sectorChunkData.length == 0) {
+            continue;
         }
         for (sectorIndex = 0; sectorIndex < sectorChunkData.length; sectorIndex++) {
             sectorData = sectorChunkData[sectorIndex];
@@ -188,7 +192,7 @@ async function getinteractingData() {
     /* global interacting will be the first id if there is one
     then it will in the order of highest placement count to lowest placement count
     so mostPlacedInteractings[1] should be the id of the most placed interacting, 
-    and mostPlacedInteractins[mostPlacedInteractings.length - 1] should be the id of the least placed interacting.
+    and mostPlacedInteractings[mostPlacedInteractings.length - 1] should be the id of the least placed interacting.
     as such, interactingData[mostPlacedInteractings[1]] for example should return the information on the most placed interacting */
     mostPlacedInteractings = Object.keys(interactingData)
     .sort((key1, key2) => interactingData[key2].placementCount - interactingData[key1].placementCount);
@@ -196,4 +200,4 @@ async function getinteractingData() {
     consoleref.log(interactingData);
 }
 
-getinteractingData();
+getInteractingData();
