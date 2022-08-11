@@ -17,13 +17,14 @@ async function getInteractingData() {
     ig.game.player.kill = function(){};
     sectorArray = [];
     interactingData = {};
+    // 50000 seems to be around the max sector chunk size
     sectorChunkSize = 128;
     sectorChunkArray = [];
     centerLoc = {
         x: 15,
         y: 15
     };
-    area = prompt("Enter the name of the area whose interactings you'd like to inspect: ","3");
+    area = prompt("Enter the name of the area whose bodies you'd like to inspect: ","3").replace(/\s+/g, '');
     if (area == '1' || area == '2' || area == '3' || area == '4' || area == '5' || area == '6' || area == '7' || area == '8') {
         plane = 1;
         area = parseInt(area);
@@ -43,7 +44,7 @@ async function getInteractingData() {
     } else {
         plane = 0;
         try {
-            areaInformation = await jQuery.ajax({
+            areaData = await jQuery.ajax({
                 headers: {
                     "cache-control": "no-cache"
                 },
@@ -58,21 +59,21 @@ async function getInteractingData() {
             ig.game.player.say("invalid area name!");
             return;
         }
-        areaId = areaInformation.aid;
-        if (typeof areaInformation.iid !== 'undefined') {
+        areaId = areaData.aid;
+        if (typeof areaData.iid !== 'undefined') {
             blockData = await jQuery.ajax({
-                url: "/j/i/def/" + areaInformation.iid,
+                url: "/j/i/def/" + areaData.iid,
                 context: null
             });
             interactingData["global interacting"] = {
-                interactingId: areaInformation.iid,
+                interactingId: areaData.iid,
                 name: blockData.name,
                 text: blockData.prop.textData.toLowerCase()
             };
         }
     }
     await delay(500);
-    topLeftCoordsResponse = prompt("Specify the top left coordinates of the section", "-100,-100").replaceAll(' ','').split(',').map(Number);
+    topLeftCoordsResponse = prompt("Specify the top left coordinates of the section", "-500,-500").replaceAll(' ','').split(',').map(Number);
     topLeftCoords = {
         x: topLeftCoordsResponse[0] + centerLoc.x,
         y: topLeftCoordsResponse[1] + centerLoc.y
@@ -82,7 +83,7 @@ async function getInteractingData() {
         y: Math.floor(topLeftCoords.y / 32)
     };
     await delay(500);
-    bottomRightCoordsResponse = prompt("Specify the bottom right coordinates of the section", "100,100").replaceAll(' ','').split(',').map(Number);
+    bottomRightCoordsResponse = prompt("Specify the bottom right coordinates of the section", "500,500").replaceAll(' ','').split(',').map(Number);
     bottomRightCoords = {
         x: bottomRightCoordsResponse[0] + centerLoc.x,
         y: bottomRightCoordsResponse[1] + centerLoc.y
@@ -92,7 +93,7 @@ async function getInteractingData() {
         y: Math.floor(bottomRightCoords.y / 32)
     };
     if (startSector.x > endSector.x || startSector.y > endSector.y) {
-        ig.game.player.say("invalid coordinates!")
+        ig.game.player.say("invalid coordinates!");
         return;
     }
     for (sectorY = startSector.y; sectorY <= endSector.y; sectorY++) {
@@ -130,7 +131,6 @@ async function getInteractingData() {
                     },
                 });
             } catch (error) {
-                sectorLoaded = false;
                 ig.game.player.say("failed to load sector. retrying...");
             }
         }
@@ -193,10 +193,10 @@ async function getInteractingData() {
     then it will in the order of highest placement count to lowest placement count
     so mostPlacedInteractings[1] should be the id of the most placed interacting, 
     and mostPlacedInteractings[mostPlacedInteractings.length - 1] should be the id of the least placed interacting.
-    as such, interactingData[mostPlacedInteractings[1]] for example should return the information on the most placed interacting */
+    as such, interactingData[mostPlacedInteractings[1]] for example should return the data on the most placed interacting */
     mostPlacedInteractings = Object.keys(interactingData)
     .sort((key1, key2) => interactingData[key2].placementCount - interactingData[key1].placementCount);
-    ig.game.player.say("finished gathering interacting information!");    
+    ig.game.player.say(`finished gathering interacting data! ${mostPlacedInteractings.length} unique interactings were found.`);    
     consoleref.log(interactingData);
 }
 
