@@ -1,6 +1,6 @@
 // improved copy script eliminates the need to scan beforehand.
 // directly requests block data from the server- much faster
-// first specify the world you want to copy
+// first specify the area you want to copy
 // then specify the coordinates of the top left block in the area you want to copy
 // then specify the coordinates of the bottom right block in the area you want to copy
 // a rectangular formed by the coordinates you specified will be copied
@@ -40,7 +40,9 @@ async function copyArea() {
         y: 15
     };
     placeHistory = [];
-    ig.game.gravity = 0;
+    sectorArray = [];
+    sectorChunkSize = 64;
+    sectorChunkArray = [];
     ig.game.player.kill = function(){};
     getWearable = async function(id) {
         if (typeof ig.game.player.attachments.w == 'undefined' || ig.game.player.attachments?.w === null) {
@@ -101,7 +103,7 @@ async function copyArea() {
     distanceToNextBlock = function(blockX, blockY) {
         return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
     };
-    area = prompt("Enter the name of the world you'd like to copy: ","3");
+    area = prompt("Enter the name of the area you'd like to copy: ","3");
     if (area == '1' || area == '2' || area == '3' || area == '4' || area == '5' || area == '6' || area == '7' || area == '8') {
         plane = 1;
         area = parseInt(area);
@@ -120,17 +122,22 @@ async function copyArea() {
         centerLoc.y = -327;
     } else {
         plane = 0;
-        areaInformation = await jQuery.ajax({
-            headers: {
-                "cache-control": "no-cache"
-            },
-            url: "/j/i/",
-            type: "POST",
-            data: {
-                urlName: area,
-                buster: Date.now()
-            }
-        });
+        try {
+            areaInformation = await jQuery.ajax({
+                headers: {
+                    "cache-control": "no-cache"
+                },
+                url: "/j/i/",
+                type: "POST",
+                data: {
+                    urlName: area,
+                    buster: Date.now()
+                }
+            });
+        } catch (error) {
+            ig.game.player.say("invalid area name!");
+            return;
+        }
         areaId = areaInformation.aid;
     }
     offset.x = ig.game.areaCenterLocation.x - centerLoc.x;
@@ -175,40 +182,72 @@ async function copyArea() {
                 differentStartX = false;
                 continue;
             }
-            sectorInformation = await jQuery.ajax({
-                type: "POST",
-                url: "/j/m/s/",
-                data: {
-                    s: JSON.stringify([[sectorX,sectorY]]),
-                    p: plane,
-                    a: areaId
-                }
-            });
-            if (sectorInformation.length === 0) {
-                continue;
+            sectorArray.push([sectorX,sectorY]);
+        }
+    }
+    if (sectorArray.length > sectorChunkSize) {
+        for (let i = 0; i < sectorArray.length; i+= sectorChunkSize) {
+            if (i + sectorChunkSize < sectorArray.length) {
+                sectorChunkArray.push(sectorArray.slice(i, i + sectorChunkSize));
+            } else {
+                sectorChunkArray.push(sectorArray.slice(i, sectorArray.length))
             }
-            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] !== null && block[1] !== null && block[2] !== null && block[3] !== null && block[4] !== null);
+        }
+    } else {
+        sectorChunkArray.push(sectorArray);
+    }
+    for (sectorChunkIndex = 0; sectorChunkIndex < sectorChunkArray.length; sectorChunkIndex++) {
+        sectorLoaded = false;
+        ig.game.player.say("loading sector data...");
+        while (!sectorLoaded) {
+            try {
+                sectorChunkData = await jQuery.ajax({
+                    type: "POST",
+                    url: "/j/m/s/",
+                    data: {
+                        s: JSON.stringify(sectorChunkArray[sectorChunkIndex]),
+                        p: plane,
+                        a: areaId
+                    },
+                    success: function() {
+                        sectorLoaded = true;
+                        ig.game.player.say("sector data loaded!");
+                    },
+                });
+            } catch (error) {
+                sectorLoaded = false;
+                ig.game.player.say("failed to load sector. retrying...");
+            }
+        }
+        ig.game.gravity = 0;
+        for (sectorIndex = 0; sectorIndex < sectorChunkData.length; sectorIndex++) {
+            sectorData = sectorChunkData[sectorIndex];
+            sectorX = sectorData.x;
+            sectorY = sectorData.y;
+            sectorData.ps = sectorData.ps.filter(block => block[0] !== null && block[1] !== null && block[2] !== null && block[3] !== null && block[4] !== null);
             if (sectorX * 32 < topLeftCoords.x) {
-                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX >= topLeftCoords.x);
+                sectorData.ps = sectorData.ps.filter(block => block[0] + 32 * sectorX >= topLeftCoords.x);
             }
             if ((sectorX + 1) * 32 - 1 > bottomRightCoords.x) {
-                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX <= bottomRightCoords.x);
+                sectorData.ps = sectorData.ps.filter(block => block[0] + 32 * sectorX <= bottomRightCoords.x);
             }
             if (sectorY * 32 < topLeftCoords.y) {
-                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY >= topLeftCoords.y);
+                sectorData.ps = sectorData.ps.filter(block => block[1] + 32 * sectorY >= topLeftCoords.y);
             }
             if ((sectorY + 1) * 32 - 1 > bottomRightCoords.y) {
-                sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY <= bottomRightCoords.y);
+                sectorData.ps = sectorData.ps.filter(block => block[1] + 32 * sectorY <= bottomRightCoords.y);
             }
-            for (blockIndex = 0; blockIndex < sectorInformation[0].ps.length; blockIndex++) {
+            for (blockIndex = 0; blockIndex < sectorData.ps.length; blockIndex++) {
                 if (!tired) {
-                    currentBlock = sectorInformation[0].ps[blockIndex];
+                    currentBlock = sectorData.ps[blockIndex];
                     blockPos = {
                         x: currentBlock[0] + 32 * sectorX + offset.x,
                         y: currentBlock[1] + 32 * sectorY + offset.y
                     };
-                    if (distanceToNextBlock(blockPos.x, blockPos.y) > 60) {
-                        waitForNextBlock = true;
+                    if (blockIndex == 0) {
+                        if (distanceToNextBlock(blockPos.x, blockPos.y) > 60) {
+                            waitForNextBlock = true;
+                        }
                     }
                     ig.game.player.pos = {
                         x: blockPos.x * 19,
@@ -218,48 +257,28 @@ async function copyArea() {
                         await delay(2000);
                         waitForNextBlock = false;
                     }
-                    ig.game[map][place](sectorInformation[0].iix[currentBlock[2]], currentBlock[3], currentBlock[4], {x: blockPos.x, y: blockPos.y}, null, !0);
-                    placeHistory.push([sectorX, sectorY, blockIndex]);
+                    ig.game[map][place](sectorData.iix[currentBlock[2]], currentBlock[3], currentBlock[4], {x: blockPos.x, y: blockPos.y}, null, !0);
+                    placeHistory.push([sectorIndex, blockIndex]);
                     if (placeHistory.length > 30) {
                         placeHistory.shift();
                     }
                     await delay(placeDelay);
                 } else {
-                    if (sectorX != placeHistory[0][0] || sectorY != placeHistory[0][1] ) {
-                        sectorInformation = await jQuery.ajax({
-                            type: "POST",
-                            url: "/j/m/s/",
-                            data: {
-                                s: JSON.stringify([[sectorX,sectorY]]),
-                                p: plane,
-                                a: areaId
-                            }
-                        });
-                        sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] !== null && block[1] !== null && block[2] !== null && block[3] !== null && block[4] !== null);
-                        if (sectorX * 32 < topLeftCoords.x) {
-                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX >= topLeftCoords.x);
-                        }
-                        if ((sectorX + 1) * 32 - 1 > bottomRightCoords.x) {
-                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[0] + 32 * sectorX <= bottomRightCoords.x);
-                        }
-                        if (sectorY * 32 < topLeftCoords.y) {
-                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY >= topLeftCoords.y);
-                        }
-                        if ((sectorY + 1) * 32 - 1 > bottomRightCoords.y) {
-                            sectorInformation[0].ps = sectorInformation[0].ps.filter(block => block[1] + 32 * sectorY <= bottomRightCoords.y);
+                    if (sectorIndex != placeHistory[0][0]) {
+                        if (distanceToNextBlock(blockPos.x, blockPos.y) > 60) {
+                            waitForNextBlock = true;
                         }
                     }
-                    sectorX = placeHistory[0][0];
-                    sectorY = placeHistory[0][1];
-                    blockIndex = placeHistory[0][2];
-                    currentBlock = sectorInformation[0].ps[blockIndex];
+                    sectorIndex = placeHistory[0][0];
+                    sectorData = sectorChunkData[sectorIndex];
+                    sectorX = sectorData.x;
+                    sectorY = sectorData.y;
+                    blockIndex = placeHistory[0][1];
+                    currentBlock = sectorData.ps[blockIndex];
                     blockPos = {
                         x: currentBlock[0] + 32 * sectorX + offset.x,
                         y: currentBlock[1] + 32 * sectorY + offset.y
                     };
-                    if (distanceToNextBlock(blockPos.x, blockPos.y) > 60) {
-                        waitForNextBlock = true;
-                    }
                     ig.game.player.pos = {
                         x: blockPos.x * 19,
                         y: blockPos.y * 19
@@ -270,11 +289,11 @@ async function copyArea() {
                     }
                     ig.game[map].deleteThingAt(blockPos.x, blockPos.y);
                     await delay(100);
-                    ig.game[map][place](sectorInformation[0].iix[currentBlock[2]], currentBlock[3], currentBlock[4], {x: blockPos.x, y: blockPos.y}, null, !0);
+                    ig.game[map][place](sectorData.iix[currentBlock[2]], currentBlock[3], currentBlock[4], {x: blockPos.x, y: blockPos.y}, null, !0);
                     await delay(400);
                 }
             }
-        }
+        }      
     }
     ig.game.gravity = 800;
     getWearable(null);
