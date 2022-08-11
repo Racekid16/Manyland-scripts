@@ -107,7 +107,7 @@ async function getinteractingData() {
     }
     for (sectorChunkIndex = 0; sectorChunkIndex < sectorChunkArray.length; sectorChunkIndex++) {
         ig.game.player.say("loading sector data...");
-        sectorsBlockData = await jQuery.ajax({
+        sectorChunkData = await jQuery.ajax({
             type: "POST",
             url: "/j/m/s/",
             data: {
@@ -117,13 +117,13 @@ async function getinteractingData() {
             }
         });
         ig.game.player.say("sector data loaded!");
-        for (sectorIndex = 0; sectorIndex < sectorsBlockData.length; sectorIndex++) {
-            sectorData = sectorsBlockData[sectorIndex];
-            sectorX = sectorData.x;
-            sectorY = sectorData.y;
+        for (sectorIndex = 0; sectorIndex < sectorChunkData.length; sectorIndex++) {
+            sectorData = sectorChunkData[sectorIndex];
             if (!sectorData.i.b.includes("INTERACT")) {
                 continue;
             }
+            sectorX = sectorData.x;
+            sectorY = sectorData.y;
             for (blockIndex = 0; blockIndex < sectorData.ps.length; blockIndex++) {
                 currentBlock = sectorData.ps[blockIndex];
                 if (sectorData.i.b[currentBlock[2]] == "INTERACT") {
