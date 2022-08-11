@@ -102,6 +102,8 @@ async function getinteractingData() {
                 sectorChunkArray.push(sectorArray.slice(i, sectorArray.length))
             }
         }
+    } else {
+        sectorChunkArray.push(sectorArray);
     }
     for (sectorChunkIndex = 0; sectorChunkIndex < sectorChunkArray.length; sectorChunkIndex++) {
         ig.game.player.say("loading sector data...");
