@@ -1,4 +1,4 @@
-// automatically collects the id, name, text data, and map location of the placements of all interactings in the specified world and section
+// automatically collects the id, name, text data, and map location of the placements of all interactings in the specified area and section
 // note: 0,0 corresponds to the area's center location
 // can JSON.stringify the interacting data, save it to a .txt file, then JSON.parse it to read it again later
 
@@ -15,13 +15,13 @@ async function getinteractingData() {
     ig.game.player.kill = function(){};
     sectorArray = [];
     interactingData = {};
-    sectorChunkSize = 64;
+    sectorChunkSize = 128;
     sectorChunkArray = [];
     centerLoc = {
         x: 15,
         y: 15
     };
-    area = prompt("Enter the name of the world whose interactings you'd like to inspect: ","3");
+    area = prompt("Enter the name of the area whose interactings you'd like to inspect: ","3");
     if (area == '1' || area == '2' || area == '3' || area == '4' || area == '5' || area == '6' || area == '7' || area == '8') {
         plane = 1;
         area = parseInt(area);
@@ -40,17 +40,22 @@ async function getinteractingData() {
         centerLoc.y = -327;
     } else {
         plane = 0;
-        areaInformation = await jQuery.ajax({
-            headers: {
-                "cache-control": "no-cache"
-            },
-            url: "/j/i/",
-            type: "POST",
-            data: {
-                urlName: area,
-                buster: Date.now()
-            }
-        });
+        try {
+            areaInformation = await jQuery.ajax({
+                headers: {
+                    "cache-control": "no-cache"
+                },
+                url: "/j/i/",
+                type: "POST",
+                data: {
+                    urlName: area,
+                    buster: Date.now()
+                }
+            });
+        } catch (error) {
+            ig.game.player.say("invalid area name!");
+            return;
+        }
         areaId = areaInformation.aid;
         if (typeof areaInformation.iid !== 'undefined') {
             blockData = await jQuery.ajax({
@@ -106,17 +111,28 @@ async function getinteractingData() {
         sectorChunkArray.push(sectorArray);
     }
     for (sectorChunkIndex = 0; sectorChunkIndex < sectorChunkArray.length; sectorChunkIndex++) {
+        sectorLoaded = false;
         ig.game.player.say("loading sector data...");
-        sectorChunkData = await jQuery.ajax({
-            type: "POST",
-            url: "/j/m/s/",
-            data: {
-                s: JSON.stringify(sectorChunkArray[sectorChunkIndex]),
-                p: plane,
-                a: areaId
+        while (!sectorLoaded) {
+            try {
+                sectorChunkData = await jQuery.ajax({
+                    type: "POST",
+                    url: "/j/m/s/",
+                    data: {
+                        s: JSON.stringify(sectorChunkArray[sectorChunkIndex]),
+                        p: plane,
+                        a: areaId
+                    },
+                    success: function() {
+                        sectorLoaded = true;
+                        ig.game.player.say("sector data loaded!");
+                    },
+                });
+            } catch (error) {
+                sectorLoaded = false;
+                ig.game.player.say("failed to load sector. retrying...");
             }
-        });
-        ig.game.player.say("sector data loaded!");
+        }
         for (sectorIndex = 0; sectorIndex < sectorChunkData.length; sectorIndex++) {
             sectorData = sectorChunkData[sectorIndex];
             if (!sectorData.i.b.includes("INTERACT")) {
