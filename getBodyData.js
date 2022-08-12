@@ -179,8 +179,12 @@ async function getBodyData() {
                         ig.game.player.say("sector data loaded!");
                         sectorArrayIndex += sectorChunkSize;
                         fetchTime = (Date.now() - startTime) / 1000;
-                        if (fetchTime < 3 && Math.round(sectorChunkSize * 5 / 4) < maxChunkSize) {
-                            sectorChunkSize = Math.round(sectorChunkSize * 5 / 4);
+                        if (fetchTime < 3) {
+                            if (Math.round(sectorChunkSize * 5 / 4) < maxChunkSize) {
+                                sectorChunkSize = Math.round(sectorChunkSize * 5 / 4);
+                            } else {
+                                sectorChunkSize = maxChunkSize;
+                            }
                         }
                     },
                 });
