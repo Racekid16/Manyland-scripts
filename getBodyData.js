@@ -232,8 +232,8 @@ async function getBodyData() {
             spriteSheet: 'http://images1.manyland.netdna-cdn.com/' + key
         }]);
     });
-    ig.game.player.say(`finished getting body ids! ${bodyData.length} unique bodies were found.`); 
     bodyData.sort((a,b) => a[1].numCollects - b[1].numCollects);
+    ig.game.player.say(`finished getting body ids! ${bodyData.length} unique bodies were found.`); 
     /* getting the additonal body data can be slow, and somewhat unnecessary if you plan to place the bodies.
     but, if you want to save all the data including body name, creator id and creator name
     you can toggle this setting.*/
@@ -291,8 +291,8 @@ async function getBodyData() {
         }
         await delay(1000);
         ig.game.player.say('finished loading creator names!');
-        consoleref.log(bodyData);
-    }
+    } 
+    consoleref.log(bodyData);
     if (wantsPlaceBodies) {
         placeBodies();
     }
