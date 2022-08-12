@@ -43,7 +43,8 @@ async function copyArea() {
     placeHistory = [];
     sectorArray = [];
     sectorChunkSize = 64;
-    sectorChunkArray = [];
+    minChunkSize = 8;
+    maxChunkSize = 512;
     ig.game.player.kill = function(){};
     getWearable = async function(id) {
         if (typeof ig.game.player.attachments.w == 'undefined' || ig.game.player.attachments?.w === null) {
@@ -186,38 +187,35 @@ async function copyArea() {
             sectorArray.push([sectorX,sectorY]);
         }
     }
-    if (sectorArray.length > sectorChunkSize) {
-        for (let i = 0; i < sectorArray.length; i+= sectorChunkSize) {
-            if (i + sectorChunkSize < sectorArray.length) {
-                sectorChunkArray.push(sectorArray.slice(i, i + sectorChunkSize));
-            } else {
-                sectorChunkArray.push(sectorArray.slice(i, sectorArray.length))
-            }
-        }
-    } else {
-        sectorChunkArray.push(sectorArray);
-    }
-    for (sectorChunkIndex = 0; sectorChunkIndex < sectorChunkArray.length; sectorChunkIndex++) {
+    for (sectorArrayIndex = 0; sectorArrayIndex < sectorArray.length; sectorArrayIndex++) {
         sectorLoaded = false;
         ig.game.player.say("loading sector data...");
         while (!sectorLoaded) {
             try {
+                startTime = Date.now();
                 sectorChunkData = await jQuery.ajax({
                     type: "POST",
                     url: "/j/m/s/",
                     data: {
-                        s: JSON.stringify(sectorChunkArray[sectorChunkIndex]),
+                        s: JSON.stringify(sectorArray.filter((element, index)=> index >= sectorArrayIndex && index < sectorArrayIndex + sectorChunkSize)),
                         p: plane,
                         a: areaId
                     },
                     success: function() {
                         sectorLoaded = true;
                         ig.game.player.say("sector data loaded!");
+                        sectorArrayIndex += sectorChunkSize;
+                        fetchTime = (Date.now() - startTime) / 1000;
+                        if (fetchTime < 3 && Math.round(sectorChunkSize * 5 / 4) < maxChunkSize) {
+                            sectorChunkSize = Math.round(sectorChunkSize * 5 / 4);
+                        }
                     },
                 });
             } catch (error) {
-                sectorLoaded = false;
                 ig.game.player.say("failed to load sector. retrying...");
+                if (Math.round(sectorChunkSize * 3 / 4) > minChunkSize) {
+                    sectorChunkSize = Math.round(sectorChunkSize * 3 / 4);
+                }
             }
         }
         if (sectorChunkData.length == 0) {
