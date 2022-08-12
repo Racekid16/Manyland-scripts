@@ -194,6 +194,8 @@ async function getBodyData() {
                 ig.game.player.say("failed to load sector. retrying...");
                 if (Math.round(sectorChunkSize * 3 / 4) > minChunkSize) {
                     sectorChunkSize = Math.round(sectorChunkSize * 3 / 4);
+                } else {
+                    sectorChunkSize = minChunkSize;
                 }
             }
         }
