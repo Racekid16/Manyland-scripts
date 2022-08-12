@@ -1,7 +1,9 @@
-// stores all the same information as before except placements
+// can stores all the same information as before except placements
 // much faster
+// by default, does not store each body's name and creator name,
+// but it can be enabled by changing wantsAdditionalBodyData to true
+// although that can significantly increase execution time if there's lots of bodies
 // better for searching large areas with lots of bodies like 3 or stockpile.
-// type placeBodies() in console to place the bodies once finished getting body data.
 // type stopPlacing() in console to stop placing bodies.
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
