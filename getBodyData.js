@@ -1,9 +1,9 @@
-// can stores all the same information as before except placements
-// much faster
+// automatically collects the id and collect count for each body in the specified area
+// note: when specifying the area to search, 0,0 corresponds to the area's center location
+// can JSON.stringify bodyData, save it to a .txt file, then JSON.parse it to read it again later
 // by default, does not store each body's name and creator name,
 // but it can be enabled by changing wantsAdditionalBodyData to true
 // although that can significantly increase execution time if there's lots of bodies
-// better for searching large areas with lots of bodies like 3 or stockpile.
 // type stopPlacing() in console to stop placing bodies.
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
