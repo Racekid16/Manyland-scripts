@@ -1,8 +1,7 @@
-// automatically collects the id, name, text data, and map location of the placements of all bodies in the specified area and section
-// note: when specifying the area to search, 0,0 corresponds to the area's center location
-// but the given coordinates of each body's location is its real location in the area
-// can JSON.stringify the body data, save it to a .txt file, then JSON.parse it to read it again later
-// if sectors keep failing to load, decrease the value of sectorChunkSize.
+// stores all the same information as before except placements
+// much faster
+// better for searching large areas with lots of bodies like 3 or stockpile.
+// type placeBodies() in console to place the bodies once finished getting body data.
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
@@ -14,9 +13,18 @@ async function getDeobfuscator() {
 
 async function getBodyData() {
     await getDeobfuscator();
+    wantsAdditionalBodyData = false;
     ig.game.player.kill = function(){};
     sectorArray = [];
-    bodyData = {};
+    class ArraySet extends Set {
+        add(arr) {
+            super.add(JSON.stringify(arr));
+        }
+        has(arr) {
+            return super.has(JSON.stringify(arr));
+        }
+    }
+    bodyIdSet = new ArraySet();
     // 50000 seems to be around the max sector chunk size
     sectorChunkSize = 128;
     minChunkSize = 16;
@@ -91,6 +99,54 @@ async function getBodyData() {
             sectorArray.push([sectorX,sectorY]);
         }
     }
+    updateBodyIdSet = async function(id) {
+        let fetchedData = false;
+        while (!fetchedData) {
+            try {
+                var collectData = await jQuery.ajax({
+                    url: "/j/i/st/" + id,
+                    success: function () {
+                        fetchedData = true;
+                    }
+                });
+            } catch (error) {
+                await delay(100);
+            }
+        }
+        bodyIdSet.add([id, collectData.timesCd]);
+    }
+    updateBodyData = async function(arrayIndex, id) {
+        let fetchedData = [false, false];
+        while (!fetchedData[0]) {
+            try {
+                var blockData = await jQuery.ajax({
+                    url: "/j/i/def/" + id,
+                    context: null,
+                    success: function () {
+                        fetchedData[0] = true;
+                    }
+                });
+            } catch (error) {
+                await delay(100);
+            }
+        }
+        while (!fetchedData[1]) {
+            try {
+                var creatorData = await jQuery.ajax({
+                    url: "/j/i/cin/" + id,
+                    context: null,
+                    success: function () {
+                        fetchedData[1] = true;
+                    }
+                });
+            } catch (error) {
+                await delay(100);
+            }
+        }
+        bodyData[arrayIndex][1].bodyName = blockData.name;
+        bodyData[arrayIndex][1].creatorId = creatorData.id;
+        bodyData[arrayIndex][1].creatorName = creatorData.name;
+    }
     for (sectorArrayIndex = 0; sectorArrayIndex < sectorArray.length; sectorArrayIndex++) {
         sectorLoaded = false;
         ig.game.player.say("loading sector data...");
@@ -135,56 +191,91 @@ async function getBodyData() {
             for (blockIndex = 0; blockIndex < sectorData.ps.length; blockIndex++) {
                 currentBlock = sectorData.ps[blockIndex];
                 if (sectorData.i.b[currentBlock[2]] == "STACKWEARB") {
-                    if (typeof bodyData[sectorData.iix[currentBlock[2]]] === 'undefined') {
-                        blockData = await jQuery.ajax({
-                            url: "/j/i/def/" + sectorData.iix[currentBlock[2]],
-                            context: null
-                        });
-                        collectData = await jQuery.ajax({
-                            url: "/j/i/st/" + sectorData.iix[currentBlock[2]]
-                        });
-                        creatorData = await jQuery.ajax({
-                            url: "/j/i/cin/" + sectorData.iix[currentBlock[2]],
-                            context: null
-                        });
-                        bodyData[sectorData.iix[currentBlock[2]]] = {
-                            bodyName: blockData.name,
-                            creatorName: creatorData.name,
-                            numCollects: collectData.timesCd,
-                            spriteSheet: 'http://images1.manyland.netdna-cdn.com/' + sectorData.iix[currentBlock[2]],
-                            placements: [],
-                        };
-                    }
-                    blockPos = {
-                        x: currentBlock[0] + 32 * sectorX,
-                        y: currentBlock[1] + 32 * sectorY
-                    };
-                    if (currentBlock[0] !== null && currentBlock[1] !== null) {
-                        /* if you want to know who placed the body, uncomment the follow lines
-                        but note this makes the script slower */
-                        // placerInfo = await jQuery.ajax({
-                        //     url: "/j/m/placer/" + blockPos.x + "/" + blockPos.y + "/" + plane + "/" + areaId,
-                        //     context: null
-                        // });
-                        bodyData[sectorData.iix[currentBlock[2]]].placements.push({
-                            x: blockPos.x, 
-                            y: blockPos.y,
-                            // placerId: placerInfo.id,
-                            // placerName: placerInfo.name
-                        });
-                        ig.game.player.say("body found!");
-                    }
+                    updateBodyIdSet(sectorData.iix[currentBlock[2]]);
                 }
             }
         }
     }
-    /* leastCollectedBodies[0] should be the id of the least collected body, 
-    and leastCollectedBodies[leastCollectedBodies.length - 1] should be the id of the most collected body.
-    as such, bodyData[leastCollectedBodies[1]] for example should return the data on the least collected body */
-    leastCollectedBodies = Object.keys(bodyData)
-    .sort((key1, key2) => bodyData[key1].numCollects - bodyData[key2].numCollects);
-    ig.game.player.say(`finished gathering body data! ${leastCollectedBodies.length} unique bodies were found.`);    
-    consoleref.log(bodyData);
+    await delay(3000);
+    bodyData = [];
+    bodyIdSet.forEach((element) => {
+        let parsedElement = JSON.parse(element);
+        bodyData.push([parsedElement[0], {
+            bodyName: null,
+            numCollects: parsedElement[1],
+            creatorId: null,
+            creatorName: null,
+            spriteSheet: 'http://images1.manyland.netdna-cdn.com/' + parsedElement[0]
+        }]);
+    });
+    ig.game.player.say(`finished getting body ids! ${bodyData.length} unique bodies were found.`); 
+    bodyData.sort((a,b) => a[1].numCollects - b[1].numCollects);
+    /* getting the additonal body data can be slow, and somewhat unnecessary if you plan to place the bodies.
+    but, if you want to save all the data including body name, creator id and creator name
+    you can toggle this setting.*/
+    if (wantsAdditionalBodyData) {
+        for (i = 0; i < bodyData.length; i++) {
+            updateBodyData(i, bodyData[i][0]);
+        }
+    }
+    await delay(1000);
+    ig.game.player.say('type bodyData in console to view the bodies\' data!');
+    await delay(3000);
+    ig.game.player.say('type placeBodies() in console to place the bodies.');
+}
+
+async function placeBodies() {
+    if (typeof Deobfuscator === 'undefined') {
+        await getDeobfuscator();
+    }
+    map = Deobfuscator.object(ig.game,'queuePerformDelayMs',true);
+    place = Deobfuscator.function(ig.game[map],'n:b||0,flip:c},d,!',true);
+    startPos = {
+        x: Math.round(ig.game.player.pos.x / 19),
+        y: Math.round(ig.game.player.pos.y / 19 + 1),
+    };
+    ig.game.gravity = 0;
+    row = 0;
+    rowHeight = 3;
+    colWidth = 2;
+    bodiesPerRow = 6;
+    stopPlacing = false;
+    for (let bodyDataIndex = 0; bodyDataIndex < bodyData.length; bodyDataIndex++, row += rowHeight) {
+        col = 0;
+        if (!stopPlacing) {
+            for (let i = 0; i < colWidth * bodiesPerRow - 1; i++) {
+                blockPos = {
+                    x: startPos.x + i, 
+                    y: startPos.y - row
+                }
+                ig.game.player.pos = {
+                    x: blockPos.x * 19,
+                    y: blockPos.y * 19
+                }
+                ig.game[map][place]("60fdc5772021881e90086990", 0, 0, {x: blockPos.x, y: blockPos.y}, null, !0);
+                await delay(50);
+            }
+            for (let j = bodyDataIndex; j < bodyDataIndex + bodiesPerRow; j++, col += colWidth) {
+                blockPos = {
+                    x: startPos.x + col,
+                    y: startPos.y - row - 1
+                }
+                ig.game.player.pos = {
+                    x: blockPos.x * 19,
+                    y: blockPos.y * 19
+                }
+                if (j < bodyData.length) {
+                    ig.game[map][place](bodyData[j][0], 0, 0, {x: blockPos.x , y: blockPos.y}, null, !0);
+                    await delay(50);
+                }
+            }
+            bodyDataIndex += bodiesPerRow;
+        } else {
+            break;
+        }
+    }
+    ig.game.gravity = 800;
+    ig.game.player.say("finished placing bodies!");
 }
 
 getBodyData();
