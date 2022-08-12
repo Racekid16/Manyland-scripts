@@ -2,6 +2,7 @@
 // much faster
 // better for searching large areas with lots of bodies like 3 or stockpile.
 // type placeBodies() in console to place the bodies once finished getting body data.
+// type stopPlacing() in console to stop placing bodies.
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
@@ -13,18 +14,11 @@ async function getDeobfuscator() {
 
 async function getBodyData() {
     await getDeobfuscator();
+    wantsPlaceBodies = false;
     wantsAdditionalBodyData = false;
     ig.game.player.kill = function(){};
     sectorArray = [];
-    class ArraySet extends Set {
-        add(arr) {
-            super.add(JSON.stringify(arr));
-        }
-        has(arr) {
-            return super.has(JSON.stringify(arr));
-        }
-    }
-    bodyIdSet = new ArraySet();
+    bodyCollectMap = new Map();
     // 50000 seems to be around the max sector chunk size
     sectorChunkSize = 128;
     minChunkSize = 16;
@@ -99,7 +93,19 @@ async function getBodyData() {
             sectorArray.push([sectorX,sectorY]);
         }
     }
-    updateBodyIdSet = async function(id) {
+    if (ig.game.isEditorHere) {
+        await delay(500);
+        wantsPlaceBodiesResponse = prompt("Do you want to place the bodies found when scanning is finished? (yes/no)","no").toLowerCase();
+        if (wantsPlaceBodiesResponse == "yes") {
+            wantsPlaceBodies = true;
+        }
+    }
+    updateBodyCollectMap = async function(id) {
+        if (!bodyCollectMap.has(id)) {
+            bodyCollectMap.set(id, null);
+        } else {
+            return;
+        }
         let fetchedData = false;
         while (!fetchedData) {
             try {
@@ -110,40 +116,47 @@ async function getBodyData() {
                     }
                 });
             } catch (error) {
-                await delay(100);
+                //nothing
             }
         }
-        bodyIdSet.add([id, collectData.timesCd]);
+        bodyCollectMap.set(id, collectData.timesCd);
     }
-    updateBodyData = async function(arrayIndex, id) {
-        let fetchedData = [false, false];
-        while (!fetchedData[0]) {
+    updateBodyDataBodyName = async function(arrayIndex, id) {
+        let fetchedData = false;
+        while (!fetchedData) {
             try {
                 var blockData = await jQuery.ajax({
                     url: "/j/i/def/" + id,
                     context: null,
                     success: function () {
-                        fetchedData[0] = true;
+                        fetchedData = true;
                     }
                 });
             } catch (error) {
-                await delay(100);
+                if (requestSize - 1 >= minRequestSize) {
+                    requestSize--;
+                }
             }
         }
-        while (!fetchedData[1]) {
+        bodyData[arrayIndex][1].bodyName = blockData.name;
+    }
+    updateBodyDataCreatorName = async function(arrayIndex, id) {
+        let fetchedData = false
+        while (!fetchedData) {
             try {
                 var creatorData = await jQuery.ajax({
                     url: "/j/i/cin/" + id,
                     context: null,
                     success: function () {
-                        fetchedData[1] = true;
+                        fetchedData = true;
                     }
                 });
             } catch (error) {
-                await delay(100);
+                if (requestSize - 1 >= minRequestSize) {
+                    requestSize--;
+                }
             }
         }
-        bodyData[arrayIndex][1].bodyName = blockData.name;
         bodyData[arrayIndex][1].creatorId = creatorData.id;
         bodyData[arrayIndex][1].creatorName = creatorData.name;
     }
@@ -191,21 +204,28 @@ async function getBodyData() {
             for (blockIndex = 0; blockIndex < sectorData.ps.length; blockIndex++) {
                 currentBlock = sectorData.ps[blockIndex];
                 if (sectorData.i.b[currentBlock[2]] == "STACKWEARB") {
-                    updateBodyIdSet(sectorData.iix[currentBlock[2]]);
+                    updateBodyCollectMap(sectorData.iix[currentBlock[2]]);
                 }
             }
         }
     }
-    await delay(3000);
+    allBodyCollectsLoaded = false;
+    while (!allBodyCollectsLoaded) {
+        mapValues = Array.from(bodyCollectMap.values());
+        if (!mapValues.includes(null)) {
+            allBodyCollectsLoaded = true;
+        } else {
+            await delay(1000);
+        }
+    }
     bodyData = [];
-    bodyIdSet.forEach((element) => {
-        let parsedElement = JSON.parse(element);
-        bodyData.push([parsedElement[0], {
+    bodyCollectMap.forEach((value, key) => {
+        bodyData.push([key, {
             bodyName: null,
-            numCollects: parsedElement[1],
+            numCollects: value,
             creatorId: null,
             creatorName: null,
-            spriteSheet: 'http://images1.manyland.netdna-cdn.com/' + parsedElement[0]
+            spriteSheet: 'http://images1.manyland.netdna-cdn.com/' + key
         }]);
     });
     ig.game.player.say(`finished getting body ids! ${bodyData.length} unique bodies were found.`); 
@@ -214,14 +234,64 @@ async function getBodyData() {
     but, if you want to save all the data including body name, creator id and creator name
     you can toggle this setting.*/
     if (wantsAdditionalBodyData) {
-        for (i = 0; i < bodyData.length; i++) {
-            updateBodyData(i, bodyData[i][0]);
+        ig.game.player.say("loading body names...");
+        minRequestSize = 250;
+        maxRequestSize = 1000;
+        requestSize = maxRequestSize;
+        for (let i = 0; i < bodyData.length; ) {
+            i + requestSize < bodyData.length? endIndex = i + requestSize : endIndex = bodyData.length;
+            for (let j = i; j < endIndex; j++) {
+                updateBodyDataBodyName(j, bodyData[j][0]);
+            }
+            allBodyNamesLoaded = false;
+            while (!allBodyNamesLoaded) {
+                nullFound = false;
+                for (let k = i; k < endIndex; k++) {
+                    if (bodyData[k][1].bodyName === null) {
+                        nullFound = true;
+                        break;
+                    }
+                }
+                if (!nullFound) {
+                    allBodyNamesLoaded = true;
+                } else {
+                    await delay(1000);
+                }
+            }
+            i = endIndex;
+            requestSize = Math.round((requestSize + maxRequestSize) / 2);
         }
+        ig.game.player.say("body names loaded! now loading creator names...");
+        for (let i = 0; i < bodyData.length; ) {
+            i + requestSize < bodyData.length? endIndex = i + requestSize : endIndex = bodyData.length;
+            for (let j = i; j < endIndex; j++) {
+                updateBodyDataCreatorName(j, bodyData[j][0]);
+            }
+            allCreatorNamesLoaded = false;
+            while (!allCreatorNamesLoaded) {
+                nullFound = false;
+                for (let k = i; k < endIndex; k++) {
+                    if (bodyData[k][1].creatorName === null) {
+                        nullFound = true;
+                        break;
+                    }
+                }
+                if (!nullFound) {
+                    allCreatorNamesLoaded = true;
+                } else {
+                    await delay(1000);
+                }
+            }
+            i += requestSize;
+            requestSize = Math.round((requestSize + maxRequestSize) / 2);
+        }
+        await delay(1000);
+        ig.game.player.say('finished loading creator names!');
+        consoleref.log(bodyData);
     }
-    await delay(1000);
-    ig.game.player.say('type bodyData in console to view the bodies\' data!');
-    await delay(3000);
-    ig.game.player.say('type placeBodies() in console to place the bodies.');
+    if (wantsPlaceBodies) {
+        placeBodies();
+    }
 }
 
 async function placeBodies() {
@@ -235,47 +305,102 @@ async function placeBodies() {
         y: Math.round(ig.game.player.pos.y / 19 + 1),
     };
     ig.game.gravity = 0;
+    tired = false;
+    callCount = 0;
     row = 0;
     rowHeight = 3;
     colWidth = 2;
-    bodiesPerRow = 6;
-    stopPlacing = false;
-    for (let bodyDataIndex = 0; bodyDataIndex < bodyData.length; bodyDataIndex++, row += rowHeight) {
-        col = 0;
-        if (!stopPlacing) {
-            for (let i = 0; i < colWidth * bodiesPerRow - 1; i++) {
-                blockPos = {
-                    x: startPos.x + i, 
-                    y: startPos.y - row
+    bodiesPerRow = 8;
+    placingStopped = false;
+    placeHistory = [];
+    if (typeof keyboard === 'undefined') {
+        keyboard = Deobfuscator.object(ig.game,'isSpeaking',true);
+        talk = Deobfuscator.function(ig.game[keyboard],'indexOf(a);this.say(a,b);',true);
+        obfOb1 = Deobfuscator.keyBetween(ig.game[keyboard][talk],'if(!this.','||1.5<=this.');
+        ig.game[keyboard][talk] = function(a) {
+            if (!ig.game[keyboard][obfOb1] || 1.5 <= ig.game[keyboard][obfOb1].delta()) {
+                ig.game[keyboard][obfOb1] = new ml.Timer;
+                0 <= ["centerTooClose", "placenameAlreadyPlaced", "tooManyPeopleAround", "editorOnly", "nonPublicAreasOnly"].indexOf(a) && ig.game.sounds.nocando.play();
+                var b = 0 <= ["editorOnly", "howToCollect"].indexOf(a);
+                ig.game[keyboard].say(a, b);
+                if (a == "tired") {
+                    callCount++;
+                    tired = true;
+                    wait();
                 }
-                ig.game.player.pos = {
-                    x: blockPos.x * 19,
-                    y: blockPos.y * 19
-                }
-                ig.game[map][place]("60fdc5772021881e90086990", 0, 0, {x: blockPos.x, y: blockPos.y}, null, !0);
-                await delay(50);
+                "tiredFromActionLessMoving" != a && ig.game[keyboard].say("_nl");
             }
-            for (let j = bodyDataIndex; j < bodyDataIndex + bodiesPerRow; j++, col += colWidth) {
-                blockPos = {
-                    x: startPos.x + col,
-                    y: startPos.y - row - 1
-                }
-                ig.game.player.pos = {
-                    x: blockPos.x * 19,
-                    y: blockPos.y * 19
-                }
-                if (j < bodyData.length) {
-                    ig.game[map][place](bodyData[j][0], 0, 0, {x: blockPos.x , y: blockPos.y}, null, !0);
+        };
+    }
+    async function wait() {
+        let initialCallCount = callCount;
+        await delay(3000);
+        if (callCount == initialCallCount) {
+            tired = false;
+        }
+    }
+    for (let bodyDataIndex = 0; bodyDataIndex < bodyData.length; row += rowHeight) {
+        col = 0;
+        if (!placingStopped) {
+            if (!tired) {
+                for (let i = 0; i < colWidth * bodiesPerRow - 1; i++) {
+                    blockPos = {
+                        x: startPos.x + i, 
+                        y: startPos.y - row
+                    }
+                    ig.game.player.pos = {
+                        x: blockPos.x * 19,
+                        y: blockPos.y * 19
+                    }
+                    ig.game[map][place]("60fdc5772021881e90086990", 0, 0, {x: blockPos.x, y: blockPos.y}, null, !0);
                     await delay(50);
                 }
+                for (let j = bodyDataIndex; j < bodyDataIndex + bodiesPerRow; j++, col += colWidth) {
+                    blockPos = {
+                        x: startPos.x + col,
+                        y: startPos.y - row - 1
+                    }
+                    ig.game.player.pos = {
+                        x: blockPos.x * 19,
+                        y: blockPos.y * 19
+                    }
+                    if (j < bodyData.length) {
+                        ig.game[map][place](bodyData[j][0], 0, 0, {x: blockPos.x , y: blockPos.y}, null, !0);
+                        await delay(50);
+                    }
+                }
+                placeHistory.push([bodyDataIndex, row]);
+                if (placeHistory.length > 4) {
+                    placeHistory.shift();
+                }
+                bodyDataIndex += bodiesPerRow;
+            } else {
+                bodyDataIndex = placeHistory[0][0];
+                row = placeHistory[0][1];
+                blockPos = {
+                    x: startPos.x,
+                    y: startPos.y - row - 1
+                };
+                ig.game.player.pos = {
+                    x: blockPos.x * 19,
+                    y: blockPos.y * 19
+                }
+                ig.game[map].deleteThingAt(blockPos.x, blockPos.y);
+                await delay(100);
+                ig.game[map][place](bodyData[bodyDataIndex][0], 0, 0, {x: blockPos.x, y: blockPos.y}, null, !0);
+                await delay(400);
+                bodyDataIndex += bodiesPerRow;
             }
-            bodyDataIndex += bodiesPerRow;
         } else {
             break;
         }
     }
     ig.game.gravity = 800;
     ig.game.player.say("finished placing bodies!");
+}
+
+function stopPlacing() {
+    placingStopped = true;
 }
 
 getBodyData();
