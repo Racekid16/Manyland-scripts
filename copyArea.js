@@ -209,7 +209,7 @@ async function copyArea() {
                         if (fetchTime < 3 && Math.round(sectorChunkSize * 5 / 4) < maxChunkSize) {
                             sectorChunkSize = Math.round(sectorChunkSize * 5 / 4);
                         }
-                    },
+                    }
                 });
             } catch (error) {
                 ig.game.player.say("failed to load sector. retrying...");
@@ -267,7 +267,7 @@ async function copyArea() {
                     await delay(placeDelay);
                 } else {
                     if (sectorIndex != placeHistory[0][0]) {
-                        if (distanceToNextBlock(blockPos.x, blockPos.y) > 60) {
+                        if (distanceToNextBlock(currentBlock[0] + 32 * sectorX + offset.x, currentBlock[1] + 32 * sectorY + offset.y) > 60) {
                             waitForNextBlock = true;
                         }
                     }
