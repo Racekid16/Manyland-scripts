@@ -62,7 +62,7 @@ async function checkSectors() {
         }
         areaId = areaData.aid;
     }
-    if (ig.game.isEditorHere && ig.game.area.currentArea == areaId && ig.game.area[currentPlane] == plane) {
+    if (ig.game.area.currentArea == areaId && ig.game.area[currentPlane] == plane) {
         canGoToSector = true;
     }
     // if sector checking a sub area, you can manually change plane and area id here
