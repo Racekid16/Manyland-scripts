@@ -109,9 +109,9 @@ async function checkSectors() {
         sectorChunkArray.push(sectorArray);
     }
     getMount = async function(id) {
-        if (typeof ig.game.player.attachments.w == 'undefined' || ig.game.player.attachments?.w === null) {
+        if (typeof ig.game.player.attachments.m == 'undefined' || ig.game.player.attachments?.m === null) {
             ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.MOUNTABLE,id,null,"MNTAIR");
-        } else if (ig.game.player.attachments.w.id != id) {
+        } else if (ig.game.player.attachments.m.id != id) {
             ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.MOUNTABLE,null,null,"MNTAIR");
             await delay(100);
             ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.MOUNTABLE,id,null,"MNTAIR");
