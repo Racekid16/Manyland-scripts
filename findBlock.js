@@ -75,7 +75,7 @@ async function findBlock() {
         }
     }
     await delay(500);
-    topLeftCoordsResponse = prompt("Specify the top left coordinates of the section", "-100,-100").replaceAll(' ','').split(',').map(Number);
+    topLeftCoordsResponse = prompt("Specify the top left coordinates of the section", "-500,-500").replaceAll(' ','').split(',').map(Number);
     topLeftCoords = {
         x: topLeftCoordsResponse[0] + centerLoc.x,
         y: topLeftCoordsResponse[1] + centerLoc.y
@@ -85,7 +85,7 @@ async function findBlock() {
         y: Math.floor(topLeftCoords.y / 32)
     };
     await delay(500);
-    bottomRightCoordsResponse = prompt("Specify the bottom right coordinates of the section", "100,100").replaceAll(' ','').split(',').map(Number);
+    bottomRightCoordsResponse = prompt("Specify the bottom right coordinates of the section", "500,500").replaceAll(' ','').split(',').map(Number);
     bottomRightCoords = {
         x: bottomRightCoordsResponse[0] + centerLoc.x,
         y: bottomRightCoordsResponse[1] + centerLoc.y
