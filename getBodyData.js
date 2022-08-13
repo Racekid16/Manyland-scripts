@@ -181,7 +181,7 @@ async function getBodyData() {
                         ig.game.player.say("sector data loaded!");
                         sectorArrayIndex += sectorChunkSize;
                         fetchTime = (Date.now() - startTime) / 1000;
-                        if (fetchTime < 3) {
+                        if (fetchTime < 2) {
                             if (Math.round(sectorChunkSize * 5 / 4) < maxChunkSize) {
                                 sectorChunkSize = Math.round(sectorChunkSize * 5 / 4);
                             } else {
@@ -271,7 +271,7 @@ async function getBodyData() {
         }
         ig.game.player.say("body names loaded! now loading creator names...");
         for (let i = 0; i < bodyData.length; ) {
-            i + requestSize < bodyData.length? endIndex = i + requestSize : endIndex = bodyData.length;
+            i + requestSize < bodyData.length ? endIndex = i + requestSize : endIndex = bodyData.length;
             for (let j = i; j < endIndex; j++) {
                 updateBodyDataCreatorName(j, bodyData[j][0]);
             }
@@ -347,7 +347,7 @@ async function placeBodies() {
             tired = false;
         }
     }
-    for (let bodyDataIndex = 0; bodyDataIndex < bodyData.length; row += rowHeight) {
+    for (let bodyDataIndex = 0; bodyDataIndex < bodyData.length; bodyDataIndex += bodiesPerRow, row += rowHeight) {
         col = 0;
         if (!placingStopped) {
             if (!tired) {
@@ -381,7 +381,6 @@ async function placeBodies() {
                 if (placeHistory.length > 4) {
                     placeHistory.shift();
                 }
-                bodyDataIndex += bodiesPerRow;
             } else {
                 bodyDataIndex = placeHistory[0][0];
                 row = placeHistory[0][1];
@@ -397,7 +396,6 @@ async function placeBodies() {
                 await delay(100);
                 ig.game[map][place](bodyData[bodyDataIndex][0], 0, 0, {x: blockPos.x, y: blockPos.y}, null, !0);
                 await delay(400);
-                bodyDataIndex += bodiesPerRow;
             }
         } else {
             break;
