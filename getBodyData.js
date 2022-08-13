@@ -17,14 +17,14 @@ async function getDeobfuscator() {
 async function getBodyData() {
     await getDeobfuscator();
     wantsPlaceBodies = false;
-    wantsAdditionalBodyData = false;
+    wantsAdditionalBodyData = true;
     ig.game.player.kill = function(){};
     sectorArray = [];
     bodyCollectMap = new Map();
     // 50000 seems to be around the max sector chunk size
-    sectorChunkSize = 128;
+    sectorChunkSize = 256;
     minChunkSize = 16;
-    maxChunkSize = 2048
+    maxChunkSize = 2048;
     centerLoc = {
         x: 15,
         y: 15
@@ -140,7 +140,17 @@ async function getBodyData() {
                 }
             }
         }
+        if (typeof blockData.prop !== 'undefined') {
+            if (typeof blockData.prop.clonedFrom !== 'undefined') {
+                var cloned = true;
+            } else {
+                var cloned = false;
+            }
+        } else {
+            var cloned = false;
+        }
         bodyData[arrayIndex][1].bodyName = blockData.name;
+        bodyData[arrayIndex][1].isCloned = cloned;
     }
     updateBodyDataCreatorName = async function(arrayIndex, id) {
         let fetchedData = false
@@ -162,6 +172,8 @@ async function getBodyData() {
         bodyData[arrayIndex][1].creatorId = creatorData.id;
         bodyData[arrayIndex][1].creatorName = creatorData.name;
     }
+    numSuccessiveFails = 0;
+    numSuccessiveQuickResponses = 0;
     for (sectorArrayIndex = 0; sectorArrayIndex < sectorArray.length; sectorArrayIndex++) {
         sectorLoaded = false;
         ig.game.player.say("loading sector data...");
@@ -179,24 +191,34 @@ async function getBodyData() {
                     success: function() {
                         sectorLoaded = true;
                         ig.game.player.say("sector data loaded!");
+                        numSuccessiveFails = 0;
                         sectorArrayIndex += sectorChunkSize;
                         fetchTime = (Date.now() - startTime) / 1000;
-                        if (fetchTime < 2) {
-                            if (Math.round(sectorChunkSize * 5 / 4) < maxChunkSize) {
-                                sectorChunkSize = Math.round(sectorChunkSize * 5 / 4);
-                            } else {
-                                sectorChunkSize = maxChunkSize;
+                        if (fetchTime < 3) {
+                            if (numSuccessiveQuickResponses > 0) {
+                                if (Math.round(sectorChunkSize * 5 / 4) < maxChunkSize) {
+                                    sectorChunkSize = Math.round(sectorChunkSize * 5 / 4);
+                                } else {
+                                    sectorChunkSize = maxChunkSize;
+                                }
                             }
+                            numSuccessiveQuickResponses++;
+                        } else {
+                            numSuccessiveQuickResponses = 0;
                         }
-                    },
+                    }
                 });
             } catch (error) {
                 ig.game.player.say("failed to load sector. retrying...");
-                if (Math.round(sectorChunkSize * 3 / 4) > minChunkSize) {
-                    sectorChunkSize = Math.round(sectorChunkSize * 3 / 4);
-                } else {
-                    sectorChunkSize = minChunkSize;
+                numSuccessiveQuickResponses = 0;
+                if (numSuccessiveFails > 0) {
+                    if (Math.round(sectorChunkSize * 3 / 4) > minChunkSize) {
+                        sectorChunkSize = Math.round(sectorChunkSize * 3 / 4);
+                    } else {
+                        sectorChunkSize = minChunkSize;
+                    }
                 }
+                numSuccessiveFails++;
             }
         }
         if (sectorChunkData.length == 0) {
