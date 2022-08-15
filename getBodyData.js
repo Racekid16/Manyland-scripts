@@ -17,14 +17,17 @@ async function getDeobfuscator() {
 async function getBodyData() {
     await getDeobfuscator();
     wantsPlaceBodies = false;
-    wantsAdditionalBodyData = true;
+    wantsAdditionalBodyData = false;
     ig.game.player.kill = function(){};
     sectorArray = [];
-    bodyCollectMap = new Map();
+    bodyDataObject = {};
     // 50000 seems to be around the max sector chunk size
     sectorChunkSize = 256;
     minChunkSize = 16;
     maxChunkSize = 2048;
+    minRequestSize = 250;
+    maxRequestSize = 1000;
+    requestSize = maxRequestSize;
     centerLoc = {
         x: 15,
         y: 15
@@ -102,36 +105,32 @@ async function getBodyData() {
             wantsPlaceBodies = true;
         }
     }
-    updateBodyCollectMap = async function(id) {
-        if (!bodyCollectMap.has(id)) {
-            bodyCollectMap.set(id, null);
-        } else {
-            return;
+    updateBodyData = async function(bodyArray) {
+        let endIndex = 0;
+        for (let i = 0; i < bodyArray.length; ) {
+            i + requestSize < bodyArray.length ? endIndex = i + requestSize : endIndex = bodyArray.length;
+            let actualRequestSize = endIndex - i;
+            let numBodiesWithDataLoadedIn = {
+                count: 0
+            }
+            for (let j = i; j < endIndex; j++) {
+                requestBodyData(bodyArray[j], numBodiesWithDataLoadedIn);
+            }
+            while (numBodiesWithDataLoadedIn.count != actualRequestSize) {
+                await delay(250);
+            }
+            i = endIndex;
+            requestSize = Math.round((requestSize + maxRequestSize) / 2);
         }
-        let fetchedData = false;
-        while (!fetchedData) {
+    }
+    requestBodyData = async function(bodyId, countObject) {
+        let fetchedData = [false, false, false];
+        while (!fetchedData[0]) {
             try {
                 var collectData = await jQuery.ajax({
-                    url: "/j/i/st/" + id,
+                    url: "/j/i/st/" + bodyId,
                     success: function () {
-                        fetchedData = true;
-                    }
-                });
-            } catch (error) {
-                //nothing
-            }
-        }
-        bodyCollectMap.set(id, collectData.timesCd);
-    }
-    updateBodyDataBodyName = async function(arrayIndex, id) {
-        let fetchedData = false;
-        while (!fetchedData) {
-            try {
-                var blockData = await jQuery.ajax({
-                    url: "/j/i/def/" + id,
-                    context: null,
-                    success: function () {
-                        fetchedData = true;
+                        fetchedData[0] = true;
                     }
                 });
             } catch (error) {
@@ -140,41 +139,57 @@ async function getBodyData() {
                 }
             }
         }
-        if (typeof blockData.prop !== 'undefined') {
-            if (typeof blockData.prop.clonedFrom !== 'undefined') {
-                var cloned = true;
+        if (wantsAdditionalBodyData) {
+            while (!fetchedData[1]) {
+                try {
+                    var blockData = await jQuery.ajax({
+                        url: "/j/i/def/" + bodyId,
+                        context: null,
+                        success: function () {
+                            fetchedData[1] = true;
+                        }
+                    });
+                } catch (error) {
+                    if (requestSize - 1 >= minRequestSize) {
+                        requestSize--;
+                    }
+                }
+            }
+            if (typeof blockData.prop !== 'undefined') {
+                if (typeof blockData.prop.clonedFrom !== 'undefined') {
+                    var cloned = true;
+                } else {
+                    var cloned = false;
+                }
             } else {
                 var cloned = false;
             }
-        } else {
-            var cloned = false;
-        }
-        bodyData[arrayIndex][1].bodyName = blockData.name;
-        bodyData[arrayIndex][1].isCloned = cloned;
-    }
-    updateBodyDataCreatorName = async function(arrayIndex, id) {
-        let fetchedData = false
-        while (!fetchedData) {
-            try {
-                var creatorData = await jQuery.ajax({
-                    url: "/j/i/cin/" + id,
-                    context: null,
-                    success: function () {
-                        fetchedData = true;
+            while (!fetchedData[2]) {
+                try {
+                    var creatorData = await jQuery.ajax({
+                        url: "/j/i/cin/" + bodyId,
+                        context: null,
+                        success: function () {
+                            fetchedData[2] = true;
+                        }
+                    });
+                } catch (error) {
+                    if (requestSize - 1 >= minRequestSize) {
+                        requestSize--;
                     }
-                });
-            } catch (error) {
-                if (requestSize - 1 >= minRequestSize) {
-                    requestSize--;
                 }
             }
+            bodyDataObject[bodyId].blockName = blockData.name;
+            bodyDataObject[bodyId].creatorId = creatorData.id;
+            bodyDataObject[bodyId].creatorName = creatorData.name;
+            bodyDataObject[bodyId].isCloned = cloned;
         }
-        bodyData[arrayIndex][1].creatorId = creatorData.id;
-        bodyData[arrayIndex][1].creatorName = creatorData.name;
+        bodyDataObject[bodyId].numCollects = collectData.timesCd;
+        countObject.count++;
     }
     numSuccessiveFails = 0;
     numSuccessiveQuickResponses = 0;
-    for (sectorArrayIndex = 0; sectorArrayIndex < sectorArray.length; sectorArrayIndex++) {
+    for (sectorArrayIndex = 0; sectorArrayIndex < sectorArray.length; ) {
         sectorLoaded = false;
         ig.game.player.say("loading sector data...");
         while (!sectorLoaded) {
@@ -224,6 +239,7 @@ async function getBodyData() {
         if (sectorChunkData.length == 0) {
             continue;
         }
+        let bodiesInSector = [];
         for (sectorIndex = 0; sectorIndex < sectorChunkData.length; sectorIndex++) {
             sectorData = sectorChunkData[sectorIndex];
             if (!sectorData.i.b.includes("STACKWEARB")) {
@@ -233,91 +249,45 @@ async function getBodyData() {
             sectorY = sectorData.y;
             for (blockIndex = 0; blockIndex < sectorData.ps.length; blockIndex++) {
                 currentBlock = sectorData.ps[blockIndex];
-                if (sectorData.i.b[currentBlock[2]] == "STACKWEARB") {
-                    updateBodyCollectMap(sectorData.iix[currentBlock[2]]);
+                if (sectorData.i.b[currentBlock[2]] == "STACKWEARB" && currentBlock[0] !== null) {
+                    blockPos = {
+                        x: currentBlock[0] + 32 * sectorX,
+                        y: currentBlock[1] + 32 * sectorY
+                    };
+                    if (typeof bodyDataObject[sectorData.iix[currentBlock[2]]] === 'undefined') {
+                        bodyDataObject[sectorData.iix[currentBlock[2]]] = {
+                            placements: [[blockPos.x, blockPos.y]]
+                        };
+                        bodiesInSector.push(sectorData.iix[currentBlock[2]]);
+                    } else {
+                        bodyDataObject[sectorData.iix[currentBlock[2]]].placements.push([blockPos.x, blockPos.y]);
+                    }
                 }
             }
         }
+        updateBodyData(bodiesInSector);
     }
     allBodyCollectsLoaded = false;
     while (!allBodyCollectsLoaded) {
-        mapValues = Array.from(bodyCollectMap.values());
-        if (!mapValues.includes(null)) {
+        hasNull = false;
+        for (key in bodyDataObject) {
+            if (typeof bodyDataObject[key].numCollects == 'undefined') {
+                hasNull = true;
+                break;
+            }
+        }
+        if (!hasNull) {
             allBodyCollectsLoaded = true;
         } else {
             await delay(1000);
         }
     }
     bodyData = [];
-    bodyCollectMap.forEach((value, key) => {
-        bodyData.push([key, {
-            bodyName: null,
-            numCollects: value,
-            creatorId: null,
-            creatorName: null,
-            spriteSheet: 'http://images1.manyland.netdna-cdn.com/' + key
-        }]);
-    });
+    for (key in bodyDataObject) {
+        bodyData.push([key, bodyDataObject[key]]);
+    }
     bodyData.sort((a,b) => a[1].numCollects - b[1].numCollects);
     ig.game.player.say(`finished getting body ids! ${bodyData.length} unique bodies were found.`); 
-    /* getting the additonal body data can be slow, and somewhat unnecessary if you plan to place the bodies.
-    but, if you want to save all the data including body name, creator id and creator name
-    you can toggle this setting.*/
-    if (wantsAdditionalBodyData) {
-        ig.game.player.say("loading body names...");
-        minRequestSize = 250;
-        maxRequestSize = 1000;
-        requestSize = maxRequestSize;
-        for (let i = 0; i < bodyData.length; ) {
-            i + requestSize < bodyData.length? endIndex = i + requestSize : endIndex = bodyData.length;
-            for (let j = i; j < endIndex; j++) {
-                updateBodyDataBodyName(j, bodyData[j][0]);
-            }
-            allBodyNamesLoaded = false;
-            while (!allBodyNamesLoaded) {
-                nullFound = false;
-                for (let k = i; k < endIndex; k++) {
-                    if (bodyData[k][1].bodyName === null) {
-                        nullFound = true;
-                        break;
-                    }
-                }
-                if (!nullFound) {
-                    allBodyNamesLoaded = true;
-                } else {
-                    await delay(1000);
-                }
-            }
-            i = endIndex;
-            requestSize = Math.round((requestSize + maxRequestSize) / 2);
-        }
-        ig.game.player.say("body names loaded! now loading creator names...");
-        for (let i = 0; i < bodyData.length; ) {
-            i + requestSize < bodyData.length ? endIndex = i + requestSize : endIndex = bodyData.length;
-            for (let j = i; j < endIndex; j++) {
-                updateBodyDataCreatorName(j, bodyData[j][0]);
-            }
-            allCreatorNamesLoaded = false;
-            while (!allCreatorNamesLoaded) {
-                nullFound = false;
-                for (let k = i; k < endIndex; k++) {
-                    if (bodyData[k][1].creatorName === null) {
-                        nullFound = true;
-                        break;
-                    }
-                }
-                if (!nullFound) {
-                    allCreatorNamesLoaded = true;
-                } else {
-                    await delay(1000);
-                }
-            }
-            i += requestSize;
-            requestSize = Math.round((requestSize + maxRequestSize) / 2);
-        }
-        await delay(1000);
-        ig.game.player.say('finished loading creator names!');
-    } 
     consoleref.log(bodyData);
     if (wantsPlaceBodies) {
         placeBodies();
