@@ -4,9 +4,11 @@
 // by default, does not store each body's name and creator name,
 // but it can be enabled by changing wantsAdditionalBodyData to true
 // although that can significantly increase execution time if there's lots of bodies
-// type stopPlacing() in console to stop placing bodies.
 // if you toggled wantsAdditionalBodyData, also have the option to find bodies by a specific player
 // by typing findBodiesByPlayerId(their id) or findBodiesByPlayerName(their name)
+// if in the same world you're scanning, have the option to go to a placed body
+// by typing goToBody(x pos, y pos)
+// type stopPlacing() in console to stop placing bodies.
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
@@ -18,6 +20,9 @@ async function getDeobfuscator() {
 
 async function getBodyData() {
     await getDeobfuscator();
+    ig.game.area = Deobfuscator.object(ig.game,'currentArea',false);
+    obfVar = Deobfuscator.object(ig.game,'mnt_P',false);
+    currentPlane = Deobfuscator.keyBetween(obfVar.mnt_P,"{p:b.",",a:b.c");
     wantsPlaceBodies = false;
     wantsAdditionalBodyData = false;
     ig.game.player.kill = function(){};
@@ -292,6 +297,32 @@ async function getBodyData() {
     bodyData.sort((a,b) => a[1].numCollects - b[1].numCollects);
     ig.game.player.say(`finished getting body ids! ${bodyData.length} unique bodies were found.`); 
     consoleref.log(bodyData);
+    if (ig.game.area.currentArea == areaId && ig.game.area[currentPlane] == plane) {
+        let distanceToBlock = function(blockX, blockY) {
+            return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
+        }
+        goToBody = function(bodyX, bodyY) {
+            if (distanceToBlock(bodyX, bodyY) > 60) {
+                ig.game.gravity = 0;
+                ig.game.player.pos = {
+                    x: (bodyX - 64) * 19,
+                    y: (bodyY - 64) * 19
+                };
+                while (ig.game.player.pos.x < bodyX * 19) {
+                    ig.game.player.pos.x += 19;
+                    await delay(10);
+                }
+                while (ig.game.player.pos.y < bodyY * 19) {
+                    ig.game.player.pos.y += 19;
+                    await delay(10);
+                }
+            } else {
+                ig.game.player.pos.x = bodyX * 19;
+                ig.game.player.pos.y = bodyY * 19;
+            }            
+            ig.game.gravity = 800;
+        }
+    }
     if (wantsAdditionalBodyData) {
         findBodiesByPlayerId = function(playerId) {
             return bodyData.filter((element) => element[1].creatorId == playerId);
