@@ -298,6 +298,13 @@ async function getBodyData() {
     ig.game.player.say(`finished getting body ids! ${bodyData.length} unique bodies were found.`); 
     consoleref.log(bodyData);
     if (ig.game.area.currentArea == areaId && ig.game.area[currentPlane] == plane) {
+        setInterval(() => {
+            playerPos = {
+                x: Math.round(ig.game.player.pos.x / 19),
+                y: Math.round(ig.game.player.pos.y / 19)
+            }
+        }, 0);
+        await delay(500);
         let distanceToBlock = function(blockX, blockY) {
             return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
         }
