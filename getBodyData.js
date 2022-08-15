@@ -5,6 +5,8 @@
 // but it can be enabled by changing wantsAdditionalBodyData to true
 // although that can significantly increase execution time if there's lots of bodies
 // type stopPlacing() in console to stop placing bodies.
+// if you toggled wantsAdditionalBodyData, also have the option to find bodies by a specific player
+// by typing findBodiesByPlayerId(their id) or findBodiesByPlayerName(their name)
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
@@ -256,7 +258,8 @@ async function getBodyData() {
                     };
                     if (typeof bodyDataObject[sectorData.iix[currentBlock[2]]] === 'undefined') {
                         bodyDataObject[sectorData.iix[currentBlock[2]]] = {
-                            placements: [[blockPos.x, blockPos.y]]
+                            placements: [[blockPos.x, blockPos.y]],
+                            spriteSheet: 'http://images1.manyland.netdna-cdn.com/' + sectorData.iix[currentBlock[2]]
                         };
                         bodiesInSector.push(sectorData.iix[currentBlock[2]]);
                     } else {
@@ -289,6 +292,15 @@ async function getBodyData() {
     bodyData.sort((a,b) => a[1].numCollects - b[1].numCollects);
     ig.game.player.say(`finished getting body ids! ${bodyData.length} unique bodies were found.`); 
     consoleref.log(bodyData);
+    if (wantsAdditionalBodyData) {
+        findBodiesByPlayerId = function(playerId) {
+            return bodyData.filter((element) => element[1].creatorId == playerId);
+        }
+        findBodiesByPlayerName = function(playerName) {
+            playerName = playerName.toLowerCase();
+            return bodyData.filter((element) => element[1].creatorName == playerName);
+        }
+    }
     if (wantsPlaceBodies) {
         placeBodies();
     }
@@ -338,6 +350,9 @@ async function placeBodies() {
         if (callCount == initialCallCount) {
             tired = false;
         }
+    }
+    stopPlacing = function() {
+        placingStopped = true;
     }
     for (let bodyDataIndex = 0; bodyDataIndex < bodyData.length; bodyDataIndex += bodiesPerRow, row += rowHeight) {
         col = 0;
@@ -395,10 +410,6 @@ async function placeBodies() {
     }
     ig.game.gravity = 800;
     ig.game.player.say("finished placing bodies!");
-}
-
-function stopPlacing() {
-    placingStopped = true;
 }
 
 getBodyData();
