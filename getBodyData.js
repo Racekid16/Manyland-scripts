@@ -309,8 +309,8 @@ async function getBodyData() {
             return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
         }
         goToBody = async function(bodyX, bodyY) {
+            ig.game.gravity = 0;
             if (distanceToBlock(bodyX, bodyY) > 32) {
-                ig.game.gravity = 0;
                 ig.game.player.pos = {
                     x: (bodyX - 64) * 19,
                     y: (bodyY - 64) * 19
