@@ -1,14 +1,15 @@
-// goes through all areas with at least 10 visits that aren't unlisted and whose name doesn't start with j
-// makes an array of all such areas and their respective editors
-// once done getting data (can take hours), you can JSON.stringify(editorData) and save it to a .txt file
-// if you have editorData, you can find worlds that someone is editor 
+// wait for editorData to load in, then you can find worlds that someone is editor 
 // by typing findAreasPlayerIsEditor(the player's id) in console
 // type findAreasPlayerIsStarEditor(the player's id) in console to find worlds someone is star editor
 // updating editor data only adds new worlds, doesn't update editor lists of ones that were already included
+// if you want to make a whole new array of editorData, run getEditorData() but can take hours
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
 (async () => {
+    if (typeof Deobfuscator === 'undefined') {
+        await $.getScript("https://cdn.jsdelivr.net/gh/parseml/many-deobf@latest/deobf.js");
+    }
     numActiveRequests = 0;
     maxSimultaneousRequests = 250;
     const onConfirmRefresh = function (event) {
@@ -16,26 +17,23 @@ const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, m
         return event.returnValue = "Are you sure you want to leave the page?";
     }
     window.addEventListener("beforeunload", onConfirmRefresh, { capture: true });
-    response = prompt('Do you want to create a new editor dataset of all available areas?\nOtherwise, previously requested editor data will load in (recommended).\n(yes/no)','no').toLowerCase();
-    if (response == "yes") {
-        getEditorData();
-    } else {
-        consoleref.log("getting previously loaded editor data... please allow up to two minutes.");
-        await $.ajax({
-            url: "https://racekid16.neocities.org/editorData.js",
-            dataType: "script",
-            timeout: 0
-        }).done(function() {
-            consoleref.log('loaded editor data.');
-        })
-        .fail(function() {
-            consoleref.log('failed to load editor data.');
-        });
-        defineUtilityFunctions();
-        response2 = prompt('Would you like to update the editorData array to include new areas?\n(yes/no)','yes').toLowerCase();
-        if (response2 == "yes") {
-            updateEditorData();
-        }
+    ig.game.player.say("getting previously loaded editor data... please allow up to one minute.");
+    await $.ajax({
+        url: "https://racekid16.neocities.org/editorData.js",
+        dataType: "script",
+        timeout: 0
+    }).done(function() {
+        ig.game.player.say('loaded editor data.');
+    }).fail(function() {
+        ig.game.player.say('failed to load editor data.');
+    });
+    while (ig.game.player.vel.x != 0 || ig.game.player.vel.y != 0) {
+        await delay(100);
+    }
+    response2 = prompt('Would you like to update the editorData array to include new areas?\n(yes/no)','yes').toLowerCase();
+    defineUtilityFunctions();
+    if (response2 == "yes") {
+        updateEditorData();
     }
 })();
 
@@ -70,7 +68,7 @@ async function getEditorData() {
             getEditorsOfArea(areaName);
         }
     }
-    consoleref.log("done getting areas' editor data.");
+    ig.game.player.say("done getting areas' editor data.");
     defineUtilityFunctions();
 }
 
@@ -150,7 +148,7 @@ function defineUtilityFunctions() {
                 let areaName = areaUrl.substring(areaUrl.lastIndexOf("/") + 1);
                 if (typeof editorDataObj[areaName] === 'undefined') {
                     getEditorsOfArea(areaName);
-                    consoleref.log(areaName);
+                    consoleref.log('added ' + areaName + ' to editorData array');
                 }
             }
         }
@@ -179,11 +177,58 @@ function defineUtilityFunctions() {
         }
         consoleref.log(areasWherePlayerIsStarEditor);
     }
-    copyEditorData = function() {
+    findEditorsOfArea = async function(areaName) {
+        let fetchedData = [false, false]
+        while (!fetchedData[0]) {
+            try {
+                var areaData = await jQuery.ajax({
+                    headers: {
+                        "cache-control": "no-cache"
+                    },
+                    url: "/j/i/",
+                    type: "POST",
+                    data: {
+                        urlName: areaName,
+                        buster: Date.now()
+                    },
+                    success: function() {
+                        fetchedData[0] = true;
+                    }
+                });
+            } catch (error) {
+                //nothing
+            }
+        }
+        let areaId = areaData.aid;
+        while (!fetchedData[1]) {
+            try {
+                var areaEditorData = await jQuery.ajax({
+                    url: "/j/f/gan/",
+                    type: "POST",
+                    data: {
+                        id: areaId
+                    },
+                    success: function() {
+                        fetchedData[1] = true;
+                    }
+                });
+            } catch (error) {
+                //nothing
+            }
+        }
+        consoleref.log(areaEditorData.editors);
+    }
+    copyEditorData = async function() {
         if (location.protocol === 'https:') {
-            navigator.clipboard.writeText(JSON.stringify(editorData));
+            ig.game.player.say("click somewhere on your screen.");
+            await delay(5000);
+            navigator.clipboard.writeText('editorData = '+ JSON.stringify(editorData)).then(function() {
+                ig.game.player.say("editor data successfully copied to clipboard!");
+            }, function() {
+                ig.game.player.say("failed to copy editor data to clipboard.");
+            });
         } else {
-            consoleref.log("must be in https to copy editor data using this function.");
+            ig.game.player.say("must be in https to copy editor data using this function.");
         }
     }
 }
