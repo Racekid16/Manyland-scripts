@@ -16,7 +16,7 @@ const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, m
         return event.returnValue = "Are you sure you want to leave the page?";
     }
     window.addEventListener("beforeunload", onConfirmRefresh, { capture: true });
-    response = prompt('Do you want to create a new editor dataset of all available areas?\nOtherwise, previously requested editor data will load in.\n(yes/no)','no').toLowerCase();
+    response = prompt('Do you want to create a new editor dataset of all available areas?\nOtherwise, previously requested editor data will load in (recommended).\n(yes/no)','no').toLowerCase();
     if (response == "yes") {
         getEditorData();
     } else {
