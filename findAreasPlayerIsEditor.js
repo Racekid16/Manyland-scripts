@@ -3,6 +3,7 @@
 // once done getting data (can take hours), you can JSON.stringify(editorData) and save it to a .txt file
 // if you have editorData, you can find worlds that someone is editor 
 // by typing findAreasPlayerIsEditor(the player's id) in console
+// type findAreasPlayerIsStarEditor(the player's id) in console to find worlds someone is star editor
 // updating editor data only adds new worlds, doesn't update editor lists of ones that were already included
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
@@ -166,6 +167,17 @@ function defineUtilityFunctions() {
             }
         }
         consoleref.log(areasWherePlayerIsEditor);
+    }
+    findAreasPlayerIsStarEditor = function(playerId) {
+        let areasWherePlayerIsStarEditor = [];
+        for (let element of editorData) {
+            for (let object of element[1]) {
+                if (object.id == playerId && Object.hasOwn(object, 'isListEditor')) {
+                    areasWherePlayerIsStarEditor.push(element[0]);
+                }
+            }
+        }
+        consoleref.log(areasWherePlayerIsStarEditor);
     }
     copyEditorData = function() {
         if (location.protocol === 'https:') {
