@@ -25,7 +25,7 @@ async function checkSectors() {
         x: 15,
         y: 15
     };
-    area = prompt("Enter the name of the area whose bodies you'd like to inspect: ","3").replace(/\s+/g, '');
+    area = prompt("Enter the name of the area whose sectors you'd like to inspect: ","3").replace(/\s+/g, '');
     if (area == '1' || area == '2' || area == '3' || area == '4' || area == '5' || area == '6' || area == '7' || area == '8') {
         plane = 1;
         area = parseInt(area);
