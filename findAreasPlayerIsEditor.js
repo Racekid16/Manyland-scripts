@@ -68,6 +68,7 @@ async function getEditorData() {
             getEditorsOfArea(areaName);
         }
     }
+    editorData.sort((a, b) => a[0].localeCompare(b[0]));
     ig.game.player.say("done getting areas' editor data.");
     defineUtilityFunctions();
 }
@@ -170,7 +171,7 @@ function defineUtilityFunctions() {
         let areasWherePlayerIsStarEditor = [];
         for (let element of editorData) {
             for (let object of element[1]) {
-                if (object.id == playerId && Object.hasOwn(object, 'isListEditor')) {
+                if (object.id == playerId && typeof object.isListEditor !== 'undefined') {
                     areasWherePlayerIsStarEditor.push(element[0]);
                 }
             }
