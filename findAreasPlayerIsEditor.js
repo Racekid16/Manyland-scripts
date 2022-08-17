@@ -232,4 +232,12 @@ function defineUtilityFunctions() {
             ig.game.player.say("must be in https to copy editor data using this function.");
         }
     }
+    playerName = Deobfuscator.keyBetween(ig.game.playerDialog.draw,'globalAlpha=0.8;ig.game.blackFont.draw(this.',',this.pos.x+a,this.pos.y+this.');
+    playerData = Deobfuscator.keyBetween(ig.game.playerDialog.draw,'.MAIN){if(this.','.isFullAccount){for(b=this.');
+    ig.game.playerDialog.oldOpenProfile = ig.game.playerDialog.openForPlayerId;
+    ig.game.playerDialog.openForPlayerId = async function(a, b, c) {
+        ig.game.playerDialog.oldOpenProfile(a, b, c);
+        await delay(200);
+        consoleref.log(ig.game.playerDialog[playerName] + "'s id is " + ig.game.playerDialog[playerData].id);
+    }
 }
