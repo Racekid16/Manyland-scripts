@@ -18,13 +18,17 @@ async function explorerChat() {
     useMotion = Deobfuscator.function(ig.game.websocket,'.MOTION,{mid:a,n:b})',true);
     currentlySpeaking = false;
     ig.game.nonLoggedInChatIfEditorAround = true;
-    ml.Misc.thereIsAnEditorAround = function(){return true}
+    enableMotionChat = true;
+    toggleMotionChat = function() {
+        enableMotionChat = !enableMotionChat;
+    }
+    ml.Misc.thereIsAnEditorAround = function(){return true};
     sayLetter = async function(motionId, motionName) {
         ig.game.attachmentManager[useMotionClientSide](ig.game.player,motionId,null);
         ig.game.websocket[useMotion](motionId,motionName);
         await delay(300);
     };
-    // array in order is a-z, 1-9, 0, . , ! ?
+    // array in order is a-z 1-9 0 . , ! ?
     characterMotions = [
         "62d10eedcddf781ec3fbdd8b",
         "62d1107c68b13d18d3a44eda",
@@ -74,149 +78,151 @@ async function explorerChat() {
         await delay(5);
     }
     setInterval(async () => {
-        for (let phraseIndex = 0; phraseIndex < ig.game.player[playerInfo][chat].length; phraseIndex++) {
-            if (typeof ig.game.player[playerInfo][chat][phraseIndex].spoken === 'undefined') {
-                ig.game.player[playerInfo][chat][phraseIndex].timer.delta = function() {return -Infinity};
-            }
-        }
-        if (!currentlySpeaking && ig.game.player[playerInfo][chat].length > 0) {
-            playerChat = ig.game.player[playerInfo][chat][0];
-            if (typeof playerChat.spoken === 'undefined' && playerChat.moving) {
-                playerChat.spoken = true;
-                playerChat.fadeIncrement = Infinity;
-                currentlySpeaking = true;
-                for (let i = 0; i < playerChat[content].length; i++) {
-                    switch (playerChat[content][i]) {
-                        case "a": 
-                            await sayLetter(characterMotions[0],"a");
-                            break;
-                        case "b": 
-                            await sayLetter(characterMotions[1],"b");
-                            break;
-                        case "c": 
-                            await sayLetter(characterMotions[2],"c");
-                            break;
-                        case "d": 
-                            await sayLetter(characterMotions[3],"d");
-                            break;
-                        case "e": 
-                            await sayLetter(characterMotions[4],"e");
-                            break;
-                        case "f": 
-                            await sayLetter(characterMotions[5],"f");
-                            break;
-                        case "g": 
-                            await sayLetter(characterMotions[6],"g");
-                            break;
-                        case "h": 
-                            await sayLetter(characterMotions[7],"h");
-                            break;
-                        case "i": 
-                            await sayLetter(characterMotions[8],"i");
-                            break;
-                        case "j": 
-                            await sayLetter(characterMotions[9],"j");
-                            break;
-                        case "k": 
-                            await sayLetter(characterMotions[10],"k");
-                            break;
-                        case "l": 
-                            await sayLetter(characterMotions[11],"l");
-                            break;
-                        case "m": 
-                            await sayLetter(characterMotions[12],"m");
-                            break;
-                        case "n": 
-                            await sayLetter(characterMotions[13],"n");
-                            break;
-                        case "o": 
-                            await sayLetter(characterMotions[14],"o");
-                            break;
-                        case "p": 
-                            await sayLetter(characterMotions[15],"p");
-                            break;
-                        case "q": 
-                            await sayLetter(characterMotions[16],"q");
-                            break;
-                        case "r": 
-                            await sayLetter(characterMotions[17],"r");
-                            break;
-                        case "s": 
-                            await sayLetter(characterMotions[18],"s");
-                            break;
-                        case "t": 
-                            await sayLetter(characterMotions[19],"t");
-                            break;
-                        case "u": 
-                            await sayLetter(characterMotions[20],"u");
-                            break;
-                        case "v": 
-                            await sayLetter(characterMotions[21],"v");
-                            break;
-                        case "w": 
-                            await sayLetter(characterMotions[22],"w");
-                            break;
-                        case "x": 
-                            await sayLetter(characterMotions[23],"x");
-                            break;
-                        case "y": 
-                            await sayLetter(characterMotions[24],"y");
-                            break;
-                        case "z": 
-                            await sayLetter(characterMotions[25],"z");
-                            break;
-                        case "1":
-                            await sayLetter(characterMotions[26],"1");
-                            break;
-                        case "2":
-                            await sayLetter(characterMotions[27],"2");
-                            break;
-                        case "3":
-                            await sayLetter(characterMotions[28],"3");
-                            break;
-                        case "4":
-                            await sayLetter(characterMotions[29],"4");
-                            break;
-                        case "5":
-                            await sayLetter(characterMotions[30],"5");
-                            break;
-                        case "6":
-                            await sayLetter(characterMotions[31],"6");
-                            break;
-                        case "7":
-                            await sayLetter(characterMotions[32],"7");
-                            break;
-                        case "8":
-                            await sayLetter(characterMotions[33],"8");
-                            break;
-                        case "9":
-                            await sayLetter(characterMotions[34],"9");
-                            break;
-                        case "0":
-                            await sayLetter(characterMotions[35],"0");
-                            break;
-                        case ".":
-                            await sayLetter(characterMotions[36],".");
-                            break;
-                        case ",":
-                            await sayLetter(characterMotions[37],",");
-                            break;
-                        case "!":
-                            await sayLetter(characterMotions[38],"!");
-                            break;
-                        case "?":
-                            await sayLetter(characterMotions[39],"?");
-                            break;
-                        case " ":
-                            await delay(300);
-                            break;
-                        default:
-                            break;  
-                    }
+        if (enableMotionChat) {
+            for (let phraseIndex = 0; phraseIndex < ig.game.player[playerInfo][chat].length; phraseIndex++) {
+                if (typeof ig.game.player[playerInfo][chat][phraseIndex].spoken === 'undefined') {
+                    ig.game.player[playerInfo][chat][phraseIndex].timer.delta = function() {return -Infinity};
                 }
-                await delay(300);
-                currentlySpeaking = false;
-                playerChat.timer.delta = function() {return Infinity};
+            }
+            if (!currentlySpeaking && ig.game.player[playerInfo][chat].length > 0) {
+                playerChat = ig.game.player[playerInfo][chat][0];
+                if (typeof playerChat.spoken === 'undefined' && playerChat.moving) {
+                    playerChat.spoken = true;
+                    playerChat.fadeIncrement = Infinity;
+                    currentlySpeaking = true;
+                    for (let i = 0; i < playerChat[content].length; i++) {
+                        switch (playerChat[content][i]) {
+                            case "a": 
+                                await sayLetter(characterMotions[0],"a");
+                                break;
+                            case "b": 
+                                await sayLetter(characterMotions[1],"b");
+                                break;
+                            case "c": 
+                                await sayLetter(characterMotions[2],"c");
+                                break;
+                            case "d": 
+                                await sayLetter(characterMotions[3],"d");
+                                break;
+                            case "e": 
+                                await sayLetter(characterMotions[4],"e");
+                                break;
+                            case "f": 
+                                await sayLetter(characterMotions[5],"f");
+                                break;
+                            case "g": 
+                                await sayLetter(characterMotions[6],"g");
+                                break;
+                            case "h": 
+                                await sayLetter(characterMotions[7],"h");
+                                break;
+                            case "i": 
+                                await sayLetter(characterMotions[8],"i");
+                                break;
+                            case "j": 
+                                await sayLetter(characterMotions[9],"j");
+                                break;
+                            case "k": 
+                                await sayLetter(characterMotions[10],"k");
+                                break;
+                            case "l": 
+                                await sayLetter(characterMotions[11],"l");
+                                break;
+                            case "m": 
+                                await sayLetter(characterMotions[12],"m");
+                                break;
+                            case "n": 
+                                await sayLetter(characterMotions[13],"n");
+                                break;
+                            case "o": 
+                                await sayLetter(characterMotions[14],"o");
+                                break;
+                            case "p": 
+                                await sayLetter(characterMotions[15],"p");
+                                break;
+                            case "q": 
+                                await sayLetter(characterMotions[16],"q");
+                                break;
+                            case "r": 
+                                await sayLetter(characterMotions[17],"r");
+                                break;
+                            case "s": 
+                                await sayLetter(characterMotions[18],"s");
+                                break;
+                            case "t": 
+                                await sayLetter(characterMotions[19],"t");
+                                break;
+                            case "u": 
+                                await sayLetter(characterMotions[20],"u");
+                                break;
+                            case "v": 
+                                await sayLetter(characterMotions[21],"v");
+                                break;
+                            case "w": 
+                                await sayLetter(characterMotions[22],"w");
+                                break;
+                            case "x": 
+                                await sayLetter(characterMotions[23],"x");
+                                break;
+                            case "y": 
+                                await sayLetter(characterMotions[24],"y");
+                                break;
+                            case "z": 
+                                await sayLetter(characterMotions[25],"z");
+                                break;
+                            case "1":
+                                await sayLetter(characterMotions[26],"1");
+                                break;
+                            case "2":
+                                await sayLetter(characterMotions[27],"2");
+                                break;
+                            case "3":
+                                await sayLetter(characterMotions[28],"3");
+                                break;
+                            case "4":
+                                await sayLetter(characterMotions[29],"4");
+                                break;
+                            case "5":
+                                await sayLetter(characterMotions[30],"5");
+                                break;
+                            case "6":
+                                await sayLetter(characterMotions[31],"6");
+                                break;
+                            case "7":
+                                await sayLetter(characterMotions[32],"7");
+                                break;
+                            case "8":
+                                await sayLetter(characterMotions[33],"8");
+                                break;
+                            case "9":
+                                await sayLetter(characterMotions[34],"9");
+                                break;
+                            case "0":
+                                await sayLetter(characterMotions[35],"0");
+                                break;
+                            case ".":
+                                await sayLetter(characterMotions[36],".");
+                                break;
+                            case ",":
+                                await sayLetter(characterMotions[37],",");
+                                break;
+                            case "!":
+                                await sayLetter(characterMotions[38],"!");
+                                break;
+                            case "?":
+                                await sayLetter(characterMotions[39],"?");
+                                break;
+                            case " ":
+                                await delay(300);
+                                break;
+                            default:
+                                break;  
+                        }
+                    }
+                    await delay(300);
+                    currentlySpeaking = false;
+                    playerChat.timer.delta = function() {return Infinity};
+                }
             }
         }
     }, 0);
