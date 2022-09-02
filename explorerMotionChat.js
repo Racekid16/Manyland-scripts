@@ -20,6 +20,7 @@ async function explorerChat() {
     ig.game.nonLoggedInChatIfEditorAround = true;
     enableMotionChat = true;
     toggleMotionChat = function() {
+        ig.game.player[playerInfo][chat].length = 0;
         enableMotionChat = !enableMotionChat;
     }
     ml.Misc.thereIsAnEditorAround = function(){return true};
@@ -91,6 +92,9 @@ async function explorerChat() {
                     playerChat.fadeIncrement = Infinity;
                     currentlySpeaking = true;
                     for (let i = 0; i < playerChat[content].length; i++) {
+                        if (!enableMotionChat) {
+                            break;
+                        }
                         switch (playerChat[content][i]) {
                             case "a": 
                                 await sayLetter(characterMotions[0],"a");
