@@ -165,7 +165,7 @@ function defineUtilityFunctions() {
                 }
             }
         }
-        consoleref.log(areasWherePlayerIsEditor);
+        return areasWherePlayerIsEditor;
     }
     findAreasPlayerIsStarEditor = function(playerId) {
         let areasWherePlayerIsStarEditor = [];
@@ -176,7 +176,7 @@ function defineUtilityFunctions() {
                 }
             }
         }
-        consoleref.log(areasWherePlayerIsStarEditor);
+        return areasWherePlayerIsStarEditor;
     }
     findEditorsOfArea = async function(areaName) {
         let fetchedData = [false, false]
@@ -217,7 +217,7 @@ function defineUtilityFunctions() {
                 //nothing
             }
         }
-        consoleref.log(areaEditorData.editors);
+        return areaEditorData.editors;
     }
     copyEditorData = async function() {
         if (location.protocol === 'https:') {
