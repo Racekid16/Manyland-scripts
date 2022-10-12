@@ -21,13 +21,20 @@ async function repeatPlayerText() {
             pName = ig.game.playerDialog[playerName];
             playerId = ig.game.playerDialog[playerData].id;
             consoleref.log("you are now repeating " + pName + "'s text.");
-        }   
+        } else {
+            playerId = null;
+            consoleref.log("you are now not repeating anybody's text.");
+        }
     }
+    clientSideText = Deobfuscator.object(ig.game.player,'addItem',true);
     receiveWs = Deobfuscator.function(ig.game.websocket,')this.socketManagerId=d.smi,this.', true);
     ig.game.websocket.oldRecieveWs = ig.game.websocket[receiveWs];
     ig.game.websocket[receiveWs] = function(a, b, c, d) {
         if (b.m == "en" && typeof playerId != 'undefined' && b.data.rid == playerId) {
-            ig.game.websocket.wssend(ig.game.websocket.ws,"en",{key:b.data.key});
+            ig.game.websocket.wssend(ig.game.websocket.ws,"en", {
+                key:b.data.key
+            });
+            ig.game.player[clientSideText].addItem(b.data.key);
         }
         ig.game.websocket.oldRecieveWs(a, b, c, d);
     }
