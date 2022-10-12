@@ -1,5 +1,5 @@
 // click on a player. you will repeat all text they say.
-// your text copying theirs does not show up client side, but everyone else can see it.
+// click on yourself to stop copying anybody's text.
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
