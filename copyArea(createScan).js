@@ -147,7 +147,11 @@ async function scanArea() {
         }      
     }
     copyText = `
-    // if you stop pasting due to an info rift
+// type pasteAll() in console if you'd like to place the entire scan
+// or type pasteSection() if you only want to place a portion of the scanned blocks
+// if so, you'll input the top left and bottom right coordinates of that section
+// (right clicking blocks will print their map location to the console)
+// if you stop pasting due to an info rift
 // you should be given an alert with the last value of blockIndex. 
 // modify this script by setting startBlockIndex to that given value, then paste again.
 // that way you can continue placing where you left off
