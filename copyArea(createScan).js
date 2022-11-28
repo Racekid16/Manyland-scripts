@@ -188,8 +188,7 @@ async function init() {
     placeHistory = [];
     tired = false;
     callCount = 0; 
-    placeWait = 50;
-    blockIndex = 0;
+    placeWait = 35;
     startBlockIndex = 0;
     waitForNextBlock = false;
     $('div').remove();
@@ -249,12 +248,17 @@ async function init() {
             ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
         }
     };
-    ig.game.errorManager.kicked = function(a){
+    ig.game.errorManager.kicked = async function(a){
         if (blockIndex > 10) {
-            alert(\`You got an info rift. Your last block index value was \${blockIndex - 10}.\`);
-        } else {
-            alert(\`You got an info rift. Your last block index value was 0.\`);
+            regex = new RegExp(\`startBlockIndex = \${startBlockIndex}\`);
+            lastBlockIndex = blockIndex - 10;
+            alert("after clicking okay, click somewhere on your screen and wait.");
+            await delay(4000);
+            previousPaste = await navigator.clipboard.readText();
+            newPaste = previousPaste.replace(regex, \`startBlockIndex = \${lastBlockIndex}\`);
+            navigator.clipboard.writeText(newPaste);
         }
+        alert(\`You got an info rift. An updated script was copied to your clipboard.\`);
         ig.game.errorManager.originalKickedFunc(a);
     }
     distanceToNextBlock = function(blockX, blockY) {
