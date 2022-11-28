@@ -191,6 +191,7 @@ async function init() {
     placeWait = 35;
     startBlockIndex = 0;
     waitForNextBlock = false;
+    alreadyGotInfoRift = false;
     $('div').remove();
     ig.system.resize(window.innerWidth, window.innerHeight);
     ig.game.panelSet.init();
@@ -249,27 +250,35 @@ async function init() {
         }
     };
     ig.game.errorManager.kicked = async function(a){
-        if (blockIndex > 10) {
-            regex = new RegExp(\`startBlockIndex = \${startBlockIndex}\`);
-            lastBlockIndex = blockIndex - 10;
-            alert("after clicking okay, click somewhere on your screen and wait.");
-            await delay(4000);
-            previousPaste = await navigator.clipboard.readText();
-            newPaste = previousPaste.replace(regex, \`startBlockIndex = \${lastBlockIndex}\`);
-            navigator.clipboard.writeText(newPaste);
+        if (!alreadyGotInfoRift) {
+            alreadyGotInfoRift = true;
+            if (blockIndex > 10) {
+                regex = new RegExp(\`startBlockIndex = \${startBlockIndex}\`);
+                lastBlockIndex = blockIndex - 10;
+                alert("You got an info rift. Click 'OK', and an updated script will be copied to your clipboard.");
+                await delay(500);
+                previousPaste = await navigator.clipboard.readText();
+                newPaste = previousPaste.replace(regex, \`startBlockIndex = \${lastBlockIndex}\`);
+                navigator.clipboard.writeText(newPaste).then(function() {
+                    alert('Successful.');
+                },
+                function() {
+                    alert('Failed.');
+                });
+            }
+            ig.game.errorManager.originalKickedFunc(a);
         }
-        alert(\`You got an info rift. An updated script was copied to your clipboard.\`);
-        ig.game.errorManager.originalKickedFunc(a);
     }
     distanceToNextBlock = function(blockX, blockY) {
         return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
     };
-    ig.game.player.say("type pasteAll() or pasteSection() in the console to place the scanned blocks.");
-    consoleref.log("type pasteAll() or pasteSection() here to place the scanned blocks.");
-}
-
-function pasteAll() {
-    pasteArea();
+    let wantsPasteAll = confirm("Would you like to paste the entire scan ('OK') or just a partial section ('Cancel')?");
+    if (wantsPasteAll) {
+        pasteArea()
+    } else {
+        ig.game.player.say("type javascript:pasteSection() in the url to place the scanned blocks.");
+        consoleref.log("type javascript:pasteSection() in the url to place the scanned blocks.");
+    }
 }
 
 async function pasteSection() {
