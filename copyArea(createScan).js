@@ -21,9 +21,6 @@ async function scanArea() {
     sectorStartY = 0;
     placeArr = [];
     sectorArray = [];
-    sectorChunkSize = 64;
-    minChunkSize = 8;
-    maxChunkSize = 512;
     area = prompt("Enter the name of the area you'd like to scan: ","3").replace(/\s+/g, '');
     if (area == '1' || area == '2' || area == '3' || area == '4' || area == '5' || area == '6' || area == '7' || area == '8') {
         plane = 1;
@@ -56,7 +53,7 @@ async function scanArea() {
         areaId = areaData.aid;
     }
     await delay(500);
-    topLeftCoordsResponse = prompt("Specify the top left coordinates of the section to scan", "-100,-100").replaceAll(' ','').split(',').map(Number);
+    topLeftCoordsResponse = prompt("Specify the top left coordinates of the section to scan.\n(0 , 0) corresponds with the center of the area you're scanning.", "-100,-100").replaceAll(' ','').split(',').map(Number);
     topLeftCoords = {
         x: topLeftCoordsResponse[0] + areaData.acl.x,
         y: topLeftCoordsResponse[1] + areaData.acl.y
@@ -66,7 +63,7 @@ async function scanArea() {
         y: Math.floor(topLeftCoords.y / 32)
     };
     await delay(500);
-    bottomRightCoordsResponse = prompt("Specify the bottom right coordinates of the section to scan", "100,100").replaceAll(' ','').split(',').map(Number);
+    bottomRightCoordsResponse = prompt("Specify the bottom right coordinates of the section to scan.\n(0 , 0) corresponds with the center of the area you're scanning.", "100,100").replaceAll(' ','').split(',').map(Number);
     bottomRightCoords = {
         x: bottomRightCoordsResponse[0] + areaData.acl.x,
         y: bottomRightCoordsResponse[1] + areaData.acl.y
@@ -85,66 +82,53 @@ async function scanArea() {
             sectorArray.push([sectorX,sectorY]);
         }
     }
-    for (sectorArrayIndex = 0; sectorArrayIndex < sectorArray.length; sectorArrayIndex++) {
-        sectorLoaded = false;
-        ig.game.player.say("loading sector data...");
-        while (!sectorLoaded) {
-            try {
-                startTime = Date.now();
-                sectorChunkData = await jQuery.ajax({
-                    type: "POST",
-                    url: "/j/m/s/",
-                    data: {
-                        s: JSON.stringify(sectorArray.filter((element, index)=> index >= sectorArrayIndex && index < sectorArrayIndex + sectorChunkSize)),
-                        p: plane,
-                        a: areaId
-                    },
-                    success: function() {
-                        sectorLoaded = true;
-                        ig.game.player.say("sector data loaded!");
-                        sectorArrayIndex += sectorChunkSize;
-                        fetchTime = (Date.now() - startTime) / 1000;
-                        if (fetchTime < 3 && Math.round(sectorChunkSize * 5 / 4) < maxChunkSize) {
-                            sectorChunkSize = Math.round(sectorChunkSize * 5 / 4);
-                        }
-                    }
-                });
-            } catch (error) {
-                ig.game.player.say("failed to load sector. retrying...");
-                if (Math.round(sectorChunkSize * 3 / 4) > minChunkSize) {
-                    sectorChunkSize = Math.round(sectorChunkSize * 3 / 4);
+    sectorLoaded = false;
+    ig.game.player.say("loading sector data...");
+    while (!sectorLoaded) {
+        try {
+            sectorChunkData = await jQuery.ajax({
+                type: "POST",
+                url: "/j/m/s/",
+                data: {
+                    s: JSON.stringify(sectorArray),
+                    p: plane,
+                    a: areaId
+                },
+                timeout: 0,
+                success: function() {
+                    sectorLoaded = true;
+                    ig.game.player.say("sector data loaded!");
                 }
-            }
+            });
+        } catch (error) {
+            ig.game.player.say("failed to load sector. retrying...");
         }
-        if (sectorChunkData.length == 0) {
-            continue;
+    }
+    for (sectorIndex = 0; sectorIndex < sectorChunkData.length; sectorIndex++) {
+        sectorData = sectorChunkData[sectorIndex];
+        sectorX = sectorData.x;
+        sectorY = sectorData.y;
+        sectorData.ps = sectorData.ps.filter(block => block[0] !== null && block[1] !== null && block[2] !== null && block[3] !== null && block[4] !== null);
+        if (sectorX * 32 < topLeftCoords.x) {
+            sectorData.ps = sectorData.ps.filter(block => block[0] + 32 * sectorX >= topLeftCoords.x);
         }
-        for (sectorIndex = 0; sectorIndex < sectorChunkData.length; sectorIndex++) {
-            sectorData = sectorChunkData[sectorIndex];
-            sectorX = sectorData.x;
-            sectorY = sectorData.y;
-            sectorData.ps = sectorData.ps.filter(block => block[0] !== null && block[1] !== null && block[2] !== null && block[3] !== null && block[4] !== null);
-            if (sectorX * 32 < topLeftCoords.x) {
-                sectorData.ps = sectorData.ps.filter(block => block[0] + 32 * sectorX >= topLeftCoords.x);
-            }
-            if ((sectorX + 1) * 32 - 1 > bottomRightCoords.x) {
-                sectorData.ps = sectorData.ps.filter(block => block[0] + 32 * sectorX <= bottomRightCoords.x);
-            }
-            if (sectorY * 32 < topLeftCoords.y) {
-                sectorData.ps = sectorData.ps.filter(block => block[1] + 32 * sectorY >= topLeftCoords.y);
-            }
-            if ((sectorY + 1) * 32 - 1 > bottomRightCoords.y) {
-                sectorData.ps = sectorData.ps.filter(block => block[1] + 32 * sectorY <= bottomRightCoords.y);
-            }
-            for (blockIndex = 0; blockIndex < sectorData.ps.length; blockIndex++) {
-                currentBlock = sectorData.ps[blockIndex];
-                blockPos = {
-                    x: currentBlock[0] + 32 * sectorX,
-                    y: currentBlock[1] + 32 * sectorY
-                };
-                placeArr.push([blockPos.x, blockPos.y, sectorData.iix[currentBlock[2]], currentBlock[3], currentBlock[4]]);
-            }
-        }      
+        if ((sectorX + 1) * 32 - 1 > bottomRightCoords.x) {
+            sectorData.ps = sectorData.ps.filter(block => block[0] + 32 * sectorX <= bottomRightCoords.x);
+        }
+        if (sectorY * 32 < topLeftCoords.y) {
+            sectorData.ps = sectorData.ps.filter(block => block[1] + 32 * sectorY >= topLeftCoords.y);
+        }
+        if ((sectorY + 1) * 32 - 1 > bottomRightCoords.y) {
+            sectorData.ps = sectorData.ps.filter(block => block[1] + 32 * sectorY <= bottomRightCoords.y);
+        }
+        for (blockIndex = 0; blockIndex < sectorData.ps.length; blockIndex++) {
+            currentBlock = sectorData.ps[blockIndex];
+            blockPos = {
+                x: currentBlock[0] + 32 * sectorX,
+                y: currentBlock[1] + 32 * sectorY
+            };
+            placeArr.push([blockPos.x, blockPos.y, sectorData.iix[currentBlock[2]], currentBlock[3], currentBlock[4]]);
+        }
     }
     copyText = `
 // if you're only placing a section, you'll input the top left and bottom right coordinates 
@@ -223,6 +207,13 @@ async function init() {
             }
         };
     }
+    async function wait() {
+        let initialCallCount = callCount;
+        await delay(3000);
+        if (callCount == initialCallCount) {
+            tired = false;
+        }
+    }
     ig.game[info].getItemStats_P = function(a) {   
         selectedBlock = Deobfuscator.object(ig.game.itemContextMenu,'rotation',false);  
         if (typeof selectedBlock !== 'undefined') {
@@ -233,13 +224,6 @@ async function init() {
         return jQuery.ajax({
             url: "/j/i/st/" + a
         })
-    }
-    async function wait() {
-        let initialCallCount = callCount;
-        await delay(3000);
-        if (callCount == initialCallCount) {
-            tired = false;
-        }
     }
     getWearable = async function(id) {
         if (typeof ig.game.player.attachments.w == 'undefined' || ig.game.player.attachments?.w === null) {
