@@ -275,6 +275,8 @@ async function init() {
             previousPaste = await navigator.clipboard.readText();
             newPaste = previousPaste.replace(regex, \`startBlockIndex = \${lastBlockIndex}\`);
             navigator.clipboard.writeText(newPaste);
+        } else if (a == "peacepark" && alreadyGotPeaceParked) {
+            return;
         }
         originalPortallerFunction(a, b);
     }
