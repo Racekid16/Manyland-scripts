@@ -174,9 +174,6 @@ async function init() {
     player = Deobfuscator.object(ig.game, 'screenName', true);
     id = Deobfuscator.keyBetween(ig.game.spawnEntity,']=a);a.','&&(this.');
     goTo = Deobfuscator.function(ig.game.portaller,\`(String(a),ig.game.\${player}.\${id});b||(this.\`,true);
-    ig.game.area = Deobfuscator.object(ig.game,'currentArea',false);
-    obfVar = Deobfuscator.object(ig.game,'mnt_P',false);
-    areaType = Deobfuscator.keyBetween(obfVar.mnt_P,"{p:b.",",a:b.c");
     ig.game.player.originalVelFunc = ig.game.player[maxVelFunc];
     ig.Entity.originalCollideFunc = ig.Entity[collideFunc];
     window.Item.prototype.originalPushFunc = window.Item.prototype[pushFunc];
