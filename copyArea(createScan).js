@@ -147,14 +147,10 @@ async function scanArea() {
         }      
     }
     copyText = `
-// type pasteAll() in console if you'd like to place the entire scan
-// or type pasteSection() if you only want to place a portion of the scanned blocks
-// if so, you'll input the top left and bottom right coordinates of that section
-// (right clicking blocks will print their map location to the console)
+// if you're only placing a section, you'll input the top left and bottom right coordinates 
+// of that section (right clicking blocks will print their map location to the console)
 // if you stop pasting due to an info rift
-// you should be given an alert with the last value of blockIndex. 
-// modify this script by setting startBlockIndex to that given value, then paste again.
-// that way you can continue placing where you left off
+// a new script will be copied to your clipboard that will make you start again at the right place.
 // if you keep getting info rifts increase placeWait
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
@@ -175,11 +171,18 @@ async function init() {
     pushFunc = Deobfuscator.function(window.Item.prototype,'Item.prototype.BASE_TYPES[this.base]==Item.prototype.BASE_TYPES.PUSH',true);
     diagPushFunc = Deobfuscator.function(window.Item.prototype,'Item.prototype.BASE_TYPES[this.base]==Item.prototype.BASE_TYPES.PUSHDIAG',true);
     info = Deobfuscator.object(ig.game,'mnt_P',true);
+    player = Deobfuscator.object(ig.game, 'screenName', true);
+    id = Deobfuscator.keyBetween(ig.game.spawnEntity,']=a);a.','&&(this.');
+    goTo = Deobfuscator.function(ig.game.portaller,\`(String(a),ig.game.\${player}.\${id});b||(this.\`,true);
+    ig.game.area = Deobfuscator.object(ig.game,'currentArea',false);
+    obfVar = Deobfuscator.object(ig.game,'mnt_P',false);
+    areaType = Deobfuscator.keyBetween(obfVar.mnt_P,"{p:b.",",a:b.c");
     ig.game.player.originalVelFunc = ig.game.player[maxVelFunc];
     ig.Entity.originalCollideFunc = ig.Entity[collideFunc];
     window.Item.prototype.originalPushFunc = window.Item.prototype[pushFunc];
     window.Item.prototype.originalDiagPushFunc = window.Item.prototype[diagPushFunc];
     ig.game.errorManager.originalKickedFunc = ig.game.errorManager.kicked;
+    originalPortallerFunction = ig.game.portaller[goTo];
     offset = {
         x: ig.game.areaCenterLocation.x - ${areaData.acl.x},
         y: ig.game.areaCenterLocation.y - ${areaData.acl.y}
@@ -192,6 +195,7 @@ async function init() {
     startBlockIndex = 0;
     waitForNextBlock = false;
     alreadyGotInfoRift = false;
+    alreadyGotPeaceParked = false;
     $('div').remove();
     ig.system.resize(window.innerWidth, window.innerHeight);
     ig.game.panelSet.init();
@@ -253,21 +257,29 @@ async function init() {
         if (!alreadyGotInfoRift) {
             alreadyGotInfoRift = true;
             if (blockIndex > 10) {
-                regex = new RegExp(\`startBlockIndex = \${startBlockIndex}\`);
+                let regex = new RegExp(\`startBlockIndex = \${startBlockIndex}\`);
                 lastBlockIndex = blockIndex - 10;
                 alert("You got an info rift. Click 'OK', and an updated script will be copied to your clipboard.");
                 await delay(500);
                 previousPaste = await navigator.clipboard.readText();
                 newPaste = previousPaste.replace(regex, \`startBlockIndex = \${lastBlockIndex}\`);
-                navigator.clipboard.writeText(newPaste).then(function() {
-                    alert('Successful.');
-                },
-                function() {
-                    alert('Failed.');
-                });
+                navigator.clipboard.writeText(newPaste);
             }
             ig.game.errorManager.originalKickedFunc(a);
         }
+    }
+    ig.game.portaller[goTo] = async function(a, b) {
+        if (a == "peacepark" && !alreadyGotPeaceParked && blockIndex > 10) {
+            alreadyGotPeaceParked = true;
+            let regex = new RegExp(\`startBlockIndex = \${startBlockIndex}\`);
+            lastBlockIndex = blockIndex - 10;
+            alert("You got an peace parked. Click 'OK', and an updated script will be copied to your clipboard.");
+            await delay(500);
+            previousPaste = await navigator.clipboard.readText();
+            newPaste = previousPaste.replace(regex, \`startBlockIndex = \${lastBlockIndex}\`);
+            navigator.clipboard.writeText(newPaste);
+        }
+        originalPortallerFunction(a, b);
     }
     distanceToNextBlock = function(blockX, blockY) {
         return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
@@ -276,12 +288,11 @@ async function init() {
     if (wantsPasteAll) {
         pasteArea()
     } else {
-        ig.game.player.say("type javascript:pasteSection() in the url to place the scanned blocks.");
-        consoleref.log("type javascript:pasteSection() in the url to place the scanned blocks.");
+        ig.game.alertDialog.open("<p>type javascript:paste_section() in the url to place the scanned blocks.</p>", true); 
     }
 }
 
-async function pasteSection() {
+async function paste_section() {
     //function for placing a specific part of the scan
     //in a <= x <= b and c <= y <= d
     topLeftCoordsResponse = prompt("Specify the top left coordinates of the section to paste", "-100,-100").replaceAll(' ','').split(',').map(Number);
