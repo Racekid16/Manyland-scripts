@@ -136,6 +136,17 @@ async function scanArea() {
 // if you stop pasting due to an info rift
 // a new script will be copied to your clipboard that will make you start again at the right place.
 // if you keep getting info rifts increase placeWait
+// use with a tampermonkey script coded like this:
+/* 
+(async function() {
+    setTimeout(async () => {
+        isAuto = true;
+        const code = await navigator.clipboard.readText();
+        const func = new Function(code);
+        func();
+    }, 3000)
+})(); 
+*/
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
 async function getDeobfuscator() {
@@ -162,8 +173,6 @@ async function init() {
     ig.Entity.originalCollideFunc = ig.Entity[collideFunc];
     window.Item.prototype.originalPushFunc = window.Item.prototype[pushFunc];
     window.Item.prototype.originalDiagPushFunc = window.Item.prototype[diagPushFunc];
-    ig.game.errorManager.originalKickedFunc = ig.game.errorManager.kicked;
-    originalPortallerFunction = ig.game.portaller[goTo];
     offset = {
         x: ig.game.areaCenterLocation.x - ${areaData.acl.x},
         y: ig.game.areaCenterLocation.y - ${areaData.acl.y}
@@ -172,7 +181,7 @@ async function init() {
     placeHistory = [];
     tired = false;
     callCount = 0; 
-    placeWait = 35;
+    placeWait = 15;
     startBlockIndex = 0;
     waitForNextBlock = false;
     alreadyGotInfoRift = false;
@@ -234,19 +243,70 @@ async function init() {
             ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
         }
     };
+    //simulatedClick code stolen from stackOverflow
+    function simulatedClick(target, options) {
+        var event = target.ownerDocument.createEvent('MouseEvents'),
+            options = options || {},
+            opts = { // These are the default values, set up for un-modified left clicks
+              type: 'click',
+              canBubble: true,
+              cancelable: true,
+              view: target.ownerDocument.defaultView,
+              detail: 1,
+              screenX: 0, //The coordinates within the entire page
+              screenY: 0,
+              clientX: 0, //The coordinates within the viewport
+              clientY: 0,
+              ctrlKey: false,
+              altKey: false,
+              shiftKey: false,
+              metaKey: false, //I *think* 'meta' is 'Cmd/Apple' on Mac, and 'Windows key' on Win. Not sure, though!
+              button: 0, //0 = left, 1 = middle, 2 = right
+              relatedTarget: null,
+            };
+      
+        //Merge the options with the defaults
+        for (var key in options) {
+          if (options.hasOwnProperty(key)) {
+            opts[key] = options[key];
+          }
+        }
+      
+        //Pass in the options
+        event.initMouseEvent(
+            opts.type,
+            opts.canBubble,
+            opts.cancelable,
+            opts.view,
+            opts.detail,
+            opts.screenX,
+            opts.screenY,
+            opts.clientX,
+            opts.clientY,
+            opts.ctrlKey,
+            opts.altKey,
+            opts.shiftKey,
+            opts.metaKey,
+            opts.button,
+            opts.relatedTarget
+        );
+      
+        //Fire the event
+        target.dispatchEvent(event);
+    }
     ig.game.errorManager.kicked = async function(a){
         if (!alreadyGotInfoRift) {
             alreadyGotInfoRift = true;
             if (blockIndex > 10) {
                 let regex = new RegExp(\`startBlockIndex = \${startBlockIndex}\`);
                 lastBlockIndex = blockIndex - 10;
-                alert("You got an info rift. Click 'OK', and an updated script will be copied to your clipboard.");
+                simulatedClick(document.getElementById('canvas'));
                 await delay(500);
                 previousPaste = await navigator.clipboard.readText();
                 newPaste = previousPaste.replace(regex, \`startBlockIndex = \${lastBlockIndex}\`);
-                navigator.clipboard.writeText(newPaste);
+                await navigator.clipboard.writeText(newPaste);
             }
-            ig.game.errorManager.originalKickedFunc(a);
+            window.location.reload();
         }
     }
     ig.game.portaller[goTo] = async function(a, b) {
@@ -254,24 +314,28 @@ async function init() {
             alreadyGotPeaceParked = true;
             let regex = new RegExp(\`startBlockIndex = \${startBlockIndex}\`);
             lastBlockIndex = blockIndex - 10;
-            alert("You got an peace parked. Click 'OK', and an updated script will be copied to your clipboard.");
+            simulatedClick(document.getElementById('canvas'));
             await delay(500);
             previousPaste = await navigator.clipboard.readText();
             newPaste = previousPaste.replace(regex, \`startBlockIndex = \${lastBlockIndex}\`);
-            navigator.clipboard.writeText(newPaste);
+            await navigator.clipboard.writeText(newPaste);
         } else if (a == "peacepark" && alreadyGotPeaceParked) {
             return;
         }
-        originalPortallerFunction(a, b);
+        window.location.reload();
     }
     distanceToNextBlock = function(blockX, blockY) {
         return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
     };
-    let wantsPasteAll = confirm("Would you like to paste the entire scan ('OK') or just a partial section ('Cancel')?");
-    if (wantsPasteAll) {
-        pasteArea()
+    if (typeof isAuto !== 'undefined') {
+        pasteArea();
     } else {
-        ig.game.alertDialog.open("<p>type javascript:paste_section() in the url to place the scanned blocks.</p>", true); 
+        let wantsPasteAll = confirm("Would you like to paste the entire scan ('OK') or just a partial section ('Cancel')?");
+        if (wantsPasteAll) {
+            pasteArea()
+        } else {
+            ig.game.alertDialog.open("<p>type javascript:paste_section() in the url to place the scanned blocks.</p>", true); 
+        }
     }
 }
 
@@ -334,7 +398,7 @@ let pasteArea = async function() {
                 await delay(2000);
                 waitForNextBlock = false;
             }
-            ig.game[map].deleteThingAt(placeHistory[0][1][0], placeHistory[0][1][1]);
+            ig.game[map].deleteThingAt(placeHistory[0][1][0] + offset.x, placeHistory[0][1][1] + offset.y);
             await delay(100);
             ig.game[map][place](placeHistory[0][1][2], placeHistory[0][1][3], placeHistory[0][1][4], {x: placeHistory[0][1][0] + offset.x, y: placeHistory[0][1][1] + offset.y}, null, !0);
             await delay(400);
