@@ -170,9 +170,6 @@ async function init() {
     id = Deobfuscator.keyBetween(ig.game.spawnEntity,']=a);a.','&&(this.');
     goTo = Deobfuscator.function(ig.game.portaller,\`(String(a),ig.game.\${player}.\${id});b||(this.\`,true);
     goToLast = Deobfuscator.function(ig.game.portaller, 'eaGroupName");a&&("elsewhere"==a?this.startEx', true);
-    if (window.location.pathname == "/peacepark") {
-        ig.game.portaller[goToLast]();
-    }
     ig.game.player.originalVelFunc = ig.game.player[maxVelFunc];
     ig.Entity.originalCollideFunc = ig.Entity[collideFunc];
     window.Item.prototype.originalPushFunc = window.Item.prototype[pushFunc];
@@ -301,14 +298,20 @@ async function init() {
         //Fire the event
         target.dispatchEvent(event);
     }
+    if (window.location.pathname == "/peacepark") {
+        startBlockIndex > 1000 ? lastBlockIndex = startBlockIndex - 1000 : lastBlockIndex = 0;
+        let regex = new RegExp(\`startBlockIndex = \${startBlockIndex}\`);
+        simulatedClick(document.getElementById('canvas'));
+        await delay(500);
+        previousPaste = await navigator.clipboard.readText();
+        newPaste = previousPaste.replace(regex, \`startBlockIndex = \${lastBlockIndex}\`);
+        await navigator.clipboard.writeText(newPaste);
+        ig.game.portaller[goToLast]();
+    }
     ig.game.errorManager.kicked = async function(a){
         if (!alreadyGotInfoRift) {
             alreadyGotInfoRift = true;
-            if (blockIndex > 10) {
-                lastBlockIndex = blockIndex - 10;
-            } else {
-                lastBlockIndex = 0;
-            }
+            blockIndex > 10 ? lastBlockIndex = blockIndex - 10 : lastBlockIndex = 0;
             let regex = new RegExp(\`startBlockIndex = \${startBlockIndex}\`);
             let regex2 = new RegExp(\`placeWait = \${initialPlaceWait}\`);
             simulatedClick(document.getElementById('canvas'));
