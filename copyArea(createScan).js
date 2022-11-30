@@ -136,7 +136,7 @@ async function scanArea() {
 // if you stop pasting due to an info rift
 // a new script will be copied to your clipboard that will make you start again at the right place.
 // if you keep getting info rifts increase placeWait
-// use with a tampermonkey script coded like this:
+// if pasting an entire scan, use with a tampermonkey script coded like this:
 /* 
 (async function() {
     setTimeout(async () => {
