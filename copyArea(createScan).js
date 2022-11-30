@@ -5,7 +5,7 @@
 // a rectangular formed by the coordinates you specified will be copied
 // note: 0,0 corresponds to the area's center location
 // returns a script to the console that you can copy; pasting it will place all the scanned blocks
-// if sectors keep failing to load, decrease the value of sectorChunkSize.
+// must be in https for this to work- otherwise the script can't access your clipboard
 
 const delay = async (ms = 1000) =>  new Promise(resolve => setTimeout(resolve, ms));
 
@@ -169,6 +169,10 @@ async function init() {
     player = Deobfuscator.object(ig.game, 'screenName', true);
     id = Deobfuscator.keyBetween(ig.game.spawnEntity,']=a);a.','&&(this.');
     goTo = Deobfuscator.function(ig.game.portaller,\`(String(a),ig.game.\${player}.\${id});b||(this.\`,true);
+    goToLast = Deobfuscator.function(ig.game.portaller, 'eaGroupName");a&&("elsewhere"==a?this.startEx', true);
+    if (window.location.pathname == "/peacepark") {
+        ig.game.portaller[goToLast]();
+    }
     ig.game.player.originalVelFunc = ig.game.player[maxVelFunc];
     ig.Entity.originalCollideFunc = ig.Entity[collideFunc];
     window.Item.prototype.originalPushFunc = window.Item.prototype[pushFunc];
@@ -182,10 +186,13 @@ async function init() {
     tired = false;
     callCount = 0; 
     placeWait = 15;
+    initialPlaceWait = placeWait;
     startBlockIndex = 0;
     waitForNextBlock = false;
     alreadyGotInfoRift = false;
     alreadyGotPeaceParked = false;
+    startTime = Date.now();
+    timeActive = 0;
     $('div').remove();
     ig.system.resize(window.innerWidth, window.innerHeight);
     ig.game.panelSet.init();
@@ -298,14 +305,23 @@ async function init() {
         if (!alreadyGotInfoRift) {
             alreadyGotInfoRift = true;
             if (blockIndex > 10) {
-                let regex = new RegExp(\`startBlockIndex = \${startBlockIndex}\`);
                 lastBlockIndex = blockIndex - 10;
-                simulatedClick(document.getElementById('canvas'));
-                await delay(500);
-                previousPaste = await navigator.clipboard.readText();
-                newPaste = previousPaste.replace(regex, \`startBlockIndex = \${lastBlockIndex}\`);
-                await navigator.clipboard.writeText(newPaste);
+            } else {
+                lastBlockIndex = 0;
             }
+            let regex = new RegExp(\`startBlockIndex = \${startBlockIndex}\`);
+            let regex2 = new RegExp(\`placeWait = \${initialPlaceWait}\`);
+            simulatedClick(document.getElementById('canvas'));
+            await delay(500);
+            previousPaste = await navigator.clipboard.readText();
+            newPaste = previousPaste.replace(regex, \`startBlockIndex = \${lastBlockIndex}\`);
+            if (Date.now() - startTime < 30000 && placeWait < 50) {
+                newPlaceWait = placeWait + 1;
+            } else {
+                newPlaceWait = placeWait;
+            }
+            newPaste = newPaste.replace(regex2, \`placeWait = \${newPlaceWait}\`);
+            await navigator.clipboard.writeText(newPaste);
             window.location.reload();
         }
     }
@@ -327,6 +343,11 @@ async function init() {
     distanceToNextBlock = function(blockX, blockY) {
         return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
     };
+    setInterval(()=> {
+        if (placeWait > 2) {
+            placeWait--;
+        }
+    }, 120000)
     if (typeof isAuto !== 'undefined') {
         pasteArea();
     } else {
@@ -365,7 +386,7 @@ let pasteArea = async function() {
     ig.Entity[collideFunc] = function(){};
     window.Item.prototype[pushFunc] = function(){return false};
     window.Item.prototype[diagPushFunc] = function(){return false};
-    getWearable("62b5eba64b4994128421214a");
+    getWearable("63875dc578c24f5ad14dad37");
     ig.game.settings.glueWearable = true;
     ig.game.player.pos.x = (placeArr[startBlockIndex][0] + offset.x) * 19;
     ig.game.player.pos.y = (placeArr[startBlockIndex][1] + offset.y) * 19;
@@ -430,7 +451,7 @@ init();`;
             consoleref.log(copyText);
         });
     } else {
-        ig.game.alertDialog.open("<p>finished scanning! copy block data from the console.</p>", true); 
+        ig.game.alertDialog.open("<p>finished scanning! copy block data from the console and change to https.</p>", true); 
         consoleref.log(copyText);
     }
 }
