@@ -541,23 +541,21 @@ async function scanArea() {
                     ig.game.player.say("failed to load sector. retrying...");
                 }
             }
-            if (!wantsPasteAll || offset.x != 0 || offset.y != 0) {
-                for (let i = 0; i < destSectorData.length; i++) {
-                    destSectorX = destSectorData[i].x;
-                    destSectorY = destSectorData[i].y;
-                    destSectorData[i].ps = destSectorData[i].ps.filter(block => block[0] !== null && block[1] !== null && block[2] !== null && block[3] !== null && block[4] !== null);
-                    if (destSectorX * 32 < scanMinX + offset.x) {
-                        destSectorData[i].ps = destSectorData[i].ps.filter(block => block[0] + 32 * destSectorX >= scanMinX + offset.x);
-                    }
-                    if ((destSectorX + 1) * 32 - 1 > scanMaxX + offset.x) {
-                        destSectorData[i].ps = destSectorData[i].ps.filter(block => block[0] + 32 * destSectorX <= scanMaxX + offset.x);
-                    }
-                    if (destSectorY * 32 < scanMinY + offset.y) {
-                        destSectorData[i].ps = destSectorData[i].ps.filter(block => block[1] + 32 * destSectorY >= scanMinY + offset.y);
-                    }
-                    if ((destSectorY + 1) * 32 - 1 > scanMaxY + offset.y) {
-                        destSectorData[i].ps = destSectorData[i].ps.filter(block => block[1] + 32 * destSectorY <= scanMaxY + offset.y);
-                    }
+            for (let i = 0; i < destSectorData.length; i++) {
+                destSectorX = destSectorData[i].x;
+                destSectorY = destSectorData[i].y;
+                destSectorData[i].ps = destSectorData[i].ps.filter(block => block[0] !== null && block[1] !== null && block[2] !== null && block[3] !== null && block[4] !== null);
+                if (destSectorX * 32 < scanMinX + offset.x) {
+                    destSectorData[i].ps = destSectorData[i].ps.filter(block => block[0] + 32 * destSectorX >= scanMinX + offset.x);
+                }
+                if ((destSectorX + 1) * 32 - 1 > scanMaxX + offset.x) {
+                    destSectorData[i].ps = destSectorData[i].ps.filter(block => block[0] + 32 * destSectorX <= scanMaxX + offset.x);
+                }
+                if (destSectorY * 32 < scanMinY + offset.y) {
+                    destSectorData[i].ps = destSectorData[i].ps.filter(block => block[1] + 32 * destSectorY >= scanMinY + offset.y);
+                }
+                if ((destSectorY + 1) * 32 - 1 > scanMaxY + offset.y) {
+                    destSectorData[i].ps = destSectorData[i].ps.filter(block => block[1] + 32 * destSectorY <= scanMaxY + offset.y);
                 }
             }
             let blockDeleted = false;
