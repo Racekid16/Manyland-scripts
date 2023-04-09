@@ -223,6 +223,12 @@ async function scanArea() {
         currentAreaInfo = Deobfuscator.object(ig.game,'currentArea',true);
         sectorPos = Deobfuscator.keyBetween(window[windowProp].prototype[whichSectorsLoadFunc], \`a=[],b=ig.game.\${currentAreaInfo}.\`,'.x,c=ig.game.');
         window[windowProp].prototype.originalSecLoadFunc = window[windowProp].prototype[whichSectorsLoadFunc];
+        fillBuildFunc = Deobfuscator.function(ig.game[map], 'length){var a=this.fillBuildQueue.shift', true);
+        window[windowProp].prototype.originalFillBuildFunc = window[windowProp].prototype[fillBuildFunc];
+        window[windowProp].prototype[fillBuildFunc] = function() {this.fillBuildQueue.length = 0}
+        fillDeleteFunc = Deobfuscator.function(ig.game[map], 'length){var a=this.fillDeleteQueue.shift', true);
+        window[windowProp].prototype.originalFillDeleteFunc = window[windowProp].prototype[fillDeleteFunc];
+        window[windowProp].prototype[fillDeleteFunc] = function() {this.fillDeleteQueue.length = 0}
         offset = {
             x: ig.game.areaCenterLocation.x - ${areaData.acl.x},
             y: ig.game.areaCenterLocation.y - ${areaData.acl.y}
@@ -241,6 +247,7 @@ async function scanArea() {
         tired = false;
         callCount = 0; 
         placeWait = 35;
+        deleteWait = 50;
         initialPlaceWait = placeWait;
         sectorCoords = ${JSON.stringify(sectorCoords)};
         startSectorIndex = 0;
@@ -585,7 +592,7 @@ async function scanArea() {
                             ig.game.player.pos.x = (blockPos.x) * 19;
                             ig.game.player.pos.y = (blockPos.y) * 19;
                             if (waitForNextBlock) {
-                                await delay(2000);
+                                await delay(4000);
                                 waitForNextBlock = false;
                             }
                             ig.game[map].deleteThingAt(blockPos.x, blockPos.y);   //delete the block
@@ -594,7 +601,7 @@ async function scanArea() {
                             if (deleteHistory.length > 20) {
                                 deleteHistory.shift();
                             }
-                            await delay(placeWait);
+                            await delay(deleteWait);
                         } else {
                             dontPlace.add(\`\${scanBlockPos.x},\${scanBlockPos.y}\`);   //mark the block as not needing to be placed later
                         }
@@ -690,6 +697,8 @@ async function scanArea() {
         window.Item.prototype[pushFunc] = window.Item.prototype.originalPushFunc;
         window.Item.prototype[diagPushFunc] = window.Item.prototype.originalDiagPushFunc;
         window[windowProp].prototype[whichSectorsLoadFunc] = window[windowProp].prototype.originalSecLoadFunc;
+        window[windowProp].prototype[fillBuildFunc] = window[windowProp].prototype.originalFillBuildFunc; 
+        window[windowProp].prototype[fillDeleteFunc] = window[windowProp].prototype.originalFillDeleteFunc;
         clearInterval(closeDialogInterval);
         ig.game.settings.glueWearable = false;
         getWearable(null);
