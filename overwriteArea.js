@@ -506,6 +506,7 @@ async function scanArea() {
         getWearable("63875dc578c24f5ad14dad37");
         ig.game.settings.glueWearable = true;
         let currentBlock;
+        let destSectorData;
         //scanSectorIndex intentionally global
         for (scanSectorIndex = startSectorIndex; scanSectorIndex < sectorCoords.length; scanSectorIndex++) {
             //delete stage
