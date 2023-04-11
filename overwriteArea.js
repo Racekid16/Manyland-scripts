@@ -123,7 +123,7 @@ async function scanArea() {
             sectorData.ps = sectorData.ps.filter(block => block[1] + 32 * sectorY <= bottomRightCoords.y);
         }
         blockDataObj[`${sectorX},${sectorY}`] = {};
-        for (blockIndex = 0; blockIndex < sectorData.ps.length; blockIndex++) {
+        for (let blockIndex = 0; blockIndex < sectorData.ps.length; blockIndex++) {
             let currentBlock = sectorData.ps[blockIndex];
             let blockPos = {
                 x: currentBlock[0] + 32 * sectorX,
@@ -347,7 +347,7 @@ async function scanArea() {
             }
         }
         ig.game.portaller[goTo] = async function(a, b) {
-            if (a == "peacepark" && !alreadyGotPeaceParked && blockIndex > 10) {
+            if (a == "peacepark" && !alreadyGotPeaceParked) {
                 alreadyGotPeaceParked = true;
                 let regex = new RegExp(\`startSectorIndex = \${startSectorIndex}\`);
                 let regex3 = /blockDataObj = .+?(?=;)/;
@@ -413,11 +413,11 @@ async function scanArea() {
             }
         }, 120000)
         if (typeof isAuto !== 'undefined') {
-            updateArea();
+            overwriteArea();
         } else {
             wantsPasteAll = confirm("Would you like to paste the entire scan ('OK') or just a partial section ('Cancel')?");
             if (wantsPasteAll) {
-                updateArea()
+                overwriteArea()
             } else {
                 ig.game.alertDialog.open("<p>type javascript:paste_section() in the url to place the scanned blocks.</p>", true); 
             }
@@ -488,10 +488,10 @@ async function scanArea() {
                 }
             }
         }
-        updateArea();    
+        overwriteArea();    
     }
     
-    let updateArea = async function() {
+    let overwriteArea = async function() {
         ig.game.gravity = 0;
         ig.game.player[maxVelFunc] = function() {
             this.maxVel.x = 0;
@@ -505,6 +505,8 @@ async function scanArea() {
         closeDialogInterval = setInterval(closeDialogs, 3000);
         getWearable("63875dc578c24f5ad14dad37");
         ig.game.settings.glueWearable = true;
+        let currentBlock;
+        //scanSectorIndex intentionally global
         for (scanSectorIndex = startSectorIndex; scanSectorIndex < sectorCoords.length; scanSectorIndex++) {
             //delete stage
             let scanSectorX = sectorCoords[scanSectorIndex][0];
@@ -645,7 +647,7 @@ async function scanArea() {
                 for (let xCoorIndex = 0; xCoorIndex < xCoors.length; xCoorIndex++) {
                     let xCoor = parseInt(xCoors[xCoorIndex], 10);
                     for (let blockIndex = 0; blockIndex < blockDataObj[sectorCoords[scanSectorIndex]][xCoors[xCoorIndex]].length; blockIndex++) {
-                        let currentBlock = blockDataObj[sectorCoords[scanSectorIndex]][xCoors[xCoorIndex]][blockIndex];
+                        currentBlock = blockDataObj[sectorCoords[scanSectorIndex]][xCoors[xCoorIndex]][blockIndex];
                         let yCoor = currentBlock[0];
                         if (!dontPlace.has(\`\${xCoor},\${yCoor}\`)) {
                             if (!tired) {
