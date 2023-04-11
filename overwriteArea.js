@@ -1,5 +1,5 @@
 /* script by Tommy3#1626
-shis script lets you copy blocks placed in a different area and place those blocks in your own area
+this script lets you copy blocks placed in a different area and place those blocks in your own area
 
 first specify the area you want to scan
 then specify the coordinates of the top left block in the area you want to scan
@@ -22,7 +22,6 @@ async function scanArea() {
     sectorStartX = 0;
     sectorStartY = 0;
     blockDataObj = {};
-    sectorCoords = [];
     sectorCoords = [];
     area = prompt("Enter the name of the area you'd like to scan: ","3").replace(/\s+/g, '');
     if (area == '1' || area == '2' || area == '3' || area == '4' || area == '5' || area == '6' || area == '7' || area == '8') {
@@ -130,7 +129,7 @@ async function scanArea() {
                 x: currentBlock[0] + 32 * sectorX,
                 y: currentBlock[1] + 32 * sectorY
             };
-            if (typeof blockDataObj[`${sectorX},${sectorY}`][`${blockPos.x}`] == 'undefined') {
+            if (typeof blockDataObj[`${sectorX},${sectorY}`][`${blockPos.x}`] === 'undefined') {
                 blockDataObj[`${sectorX},${sectorY}`][`${blockPos.x}`] = [];    
             }
             blockDataObj[`${sectorX},${sectorY}`][`${blockPos.x}`].push([blockPos.y, sectorData.iix[currentBlock[2]], currentBlock[3], currentBlock[4]]);
@@ -225,10 +224,8 @@ async function scanArea() {
         window[windowProp].prototype.originalSecLoadFunc = window[windowProp].prototype[whichSectorsLoadFunc];
         fillBuildFunc = Deobfuscator.function(ig.game[map], 'length){var a=this.fillBuildQueue.shift', true);
         window[windowProp].prototype.originalFillBuildFunc = window[windowProp].prototype[fillBuildFunc];
-        window[windowProp].prototype[fillBuildFunc] = function() {this.fillBuildQueue.length = 0}
         fillDeleteFunc = Deobfuscator.function(ig.game[map], 'length){var a=this.fillDeleteQueue.shift', true);
         window[windowProp].prototype.originalFillDeleteFunc = window[windowProp].prototype[fillDeleteFunc];
-        window[windowProp].prototype[fillDeleteFunc] = function() {this.fillDeleteQueue.length = 0}
         offset = {
             x: ig.game.areaCenterLocation.x - ${areaData.acl.x},
             y: ig.game.areaCenterLocation.y - ${areaData.acl.y}
@@ -242,19 +239,20 @@ async function scanArea() {
             y: ${bottomRightCoords.y}
         }
         blockDataObj = ${JSON.stringify(blockDataObj)}; 
+        sectorCoords = ${JSON.stringify(sectorCoords)};
+        startSectorIndex = 0;
         placeHistory = [];
         deleteHistory = [];
         tired = false;
         callCount = 0; 
         placeWait = 35;
-        deleteWait = 50;
+        deleteWait = 25;
         initialPlaceWait = placeWait;
-        sectorCoords = ${JSON.stringify(sectorCoords)};
-        startSectorIndex = 0;
         waitForNextBlock = false;
         alreadyGotInfoRift = false;
         alreadyGotPeaceParked = false;
         startTime = Date.now();
+        // code removing ad bar. credit to person who wrote that
         $('div').remove();
         ig.system.resize(window.innerWidth, window.innerHeight);
         ig.game.panelSet.init();
@@ -304,7 +302,7 @@ async function scanArea() {
             })
         }
         getWearable = async function(id) {
-            if (typeof ig.game.player.attachments.w == 'undefined' || ig.game.player.attachments?.w === null) {
+            if (typeof ig.game.player.attachments.w === 'undefined' || ig.game.player.attachments?.w === null) {
                 ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
             } else if (ig.game.player.attachments.w.id != id) {
                 ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,null,null,"STACKWEAR");
@@ -377,6 +375,13 @@ async function scanArea() {
             }
             return a;
         }
+        closeDialogs = function() {
+            ig.game.writableDialog.close();
+            ig.game.readableDialog.close();
+            ig.game.mediaDialog.close();
+            ig.game.holderDialog.close();
+            ig.game.alertDialog.close();
+        }
         distanceToNextBlock = function(blockX, blockY) {
             return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
         }
@@ -402,13 +407,6 @@ async function scanArea() {
                 return -1;
             }
         } 
-        closeDialogs = function() {
-            ig.game.writableDialog.close();
-            ig.game.readableDialog.close();
-            ig.game.mediaDialog.close();
-            ig.game.holderDialog.close();
-            ig.game.alertDialog.close();
-        }
         setInterval(()=> {
             if (placeWait > 2) {
                 placeWait--;
@@ -457,7 +455,7 @@ async function scanArea() {
             return sectorX >= sectionStartSector.x && sectorY >= sectionStartSector.y && sectorX <= sectionEndSector.x && sectorY <= sectionEndSector.y;
         })
         for (let sector of sectorCoords) {
-            if (typeof blockDataObj[sector] != 'undefined') {
+            if (typeof blockDataObj[sector] !== 'undefined') {
                 let sectorX = sector[0];
                 let sectorY = sector[1];
                 if (sectorX * 32 < a) {
@@ -494,7 +492,6 @@ async function scanArea() {
     }
     
     let updateArea = async function() {
-        closeDialogInterval = setInterval(closeDialogs, 3000);
         ig.game.gravity = 0;
         ig.game.player[maxVelFunc] = function() {
             this.maxVel.x = 0;
@@ -503,14 +500,15 @@ async function scanArea() {
         ig.Entity[collideFunc] = function(){};
         window.Item.prototype[pushFunc] = function(){return false};
         window.Item.prototype[diagPushFunc] = function(){return false};
+        window[windowProp].prototype[fillBuildFunc] = function() {this.fillBuildQueue.length = 0}
+        window[windowProp].prototype[fillDeleteFunc] = function() {this.fillDeleteQueue.length = 0}
+        closeDialogInterval = setInterval(closeDialogs, 3000);
         getWearable("63875dc578c24f5ad14dad37");
         ig.game.settings.glueWearable = true;
         for (scanSectorIndex = startSectorIndex; scanSectorIndex < sectorCoords.length; scanSectorIndex++) {
             //delete stage
             let scanSectorX = sectorCoords[scanSectorIndex][0];
             let scanSectorY = sectorCoords[scanSectorIndex][1];
-            //find which sector each corner of the scanned sector is in the dest. world
-            //order: top left, top right, bottom left, bottom right
             let scanMinX = scanSectorX * 32 < scanTopLeftCoords.x ? scanTopLeftCoords.x : scanSectorX * 32;
             let scanMinY = scanSectorY * 32 < scanTopLeftCoords.y ? scanTopLeftCoords.y : scanSectorY * 32;
             let scanMaxX = scanSectorX * 32 + 31 > scanBottomRightCoords.x ? scanBottomRightCoords.x : scanSectorX * 32 + 31;
@@ -519,9 +517,9 @@ async function scanArea() {
             let scanSectorTopRightCoords =    [scanMaxX, scanMinY];
             let scanSectorBottomLeftCoords =  [scanMinX, scanMaxY];
             let scanSectorBottomRightCoords = [scanMaxX, scanMaxY];
-            let sectorCorners = [scanSectorTopLeftCoords, scanSectorTopRightCoords, scanSectorBottomLeftCoords, scanSectorBottomRightCoords];
+            let scanSectorCorners = [scanSectorTopLeftCoords, scanSectorTopRightCoords, scanSectorBottomLeftCoords, scanSectorBottomRightCoords];
             let destSectors = new Set();
-            for (let corner of sectorCorners) {
+            for (let corner of scanSectorCorners) {
                 destSectors.add(\`[\${Math.floor((corner[0] + offset.x) / 32)},\${Math.floor((corner[1] + offset.y) / 32)}]\`);
             }
             let requestSectors = [];
@@ -571,39 +569,45 @@ async function scanArea() {
                 let destSectorX = destSectorData[destSectorIndex].x;
                 let destSectorY = destSectorData[destSectorIndex].y;
                 for (let blockIndex = 0; blockIndex < destSectorData[destSectorIndex].ps.length; blockIndex++) {
+                    let destBlockPos = {};
                     if (!tired) {
                         currentBlock = destSectorData[destSectorIndex].ps[blockIndex];
-                        blockPos = {
-                            x: currentBlock[0] + 32 * destSectorX,
-                            y: currentBlock[1] + 32 * destSectorY
-                        };
-                        scanBlockPos = {
-                            x: blockPos.x - offset.x,
-                            y: blockPos.y - offset.y
+                        destBlockPos.x = currentBlock[0] + 32 * destSectorX;
+                        destBlockPos.y = currentBlock[1] + 32 * destSectorY;
+                        let scanBlockPos = {
+                            x: destBlockPos.x - offset.x,
+                            y: destBlockPos.y - offset.y
                         }
-                        sectorKey = \`\${scanSectorX},\${scanSectorY}\`;
-                        if (typeof blockDataObj[sectorKey] == 'undefined'   //no blocks in scan sector
-                        || typeof blockDataObj[sectorKey][\`\${scanBlockPos.x}\`] == 'undefined'   //no blocks in col in scan sector
+                        let sectorKey = \`\${scanSectorX},\${scanSectorY}\`;
+                        if (typeof blockDataObj[sectorKey] === 'undefined'   //no blocks in scan sector
+                        || typeof blockDataObj[sectorKey][\`\${scanBlockPos.x}\`] === 'undefined'   //no blocks in col in scan sector
                         || (index = binarySearch(blockDataObj[sectorKey][\`\${scanBlockPos.x}\`], scanBlockPos.y)) == -1   //no block in pos in scan sector
                         || blockDataObj[sectorKey][\`\${scanBlockPos.x}\`][index][1] != destSectorData[destSectorIndex].iix[currentBlock[2]]) {     //block there but id is different
-                            if (distanceToNextBlock(blockPos.x, blockPos.y) > 46) {
+                            if (blockIndex == 0) {
                                 waitForNextBlock = true;
                             }
-                            ig.game.player.pos.x = (blockPos.x) * 19;
-                            ig.game.player.pos.y = (blockPos.y) * 19;
+                            ig.game.player.pos = {
+                                x: destBlockPos.x * 19, 
+                                y: destBlockPos.y * 19
+                            }
                             if (waitForNextBlock) {
-                                await delay(4000);
+                                if (distanceToNextBlock(destBlockPos.x, destBlockPos.y) > 32) {
+                                    await delay(3000);
+                                } else {
+                                    await delay(1000);
+                                }
                                 waitForNextBlock = false;
                             }
-                            ig.game[map].deleteThingAt(blockPos.x, blockPos.y);   //delete the block
+                            ig.game[map].deleteThingAt(destBlockPos.x, destBlockPos.y);
                             blockDeleted = true;
-                            deleteHistory.push([scanSectorIndex, destSectorIndex, blockIndex]);
+                            deleteHistory.push([scanSectorIndex, destSectorIndex, blockIndex, currentBlock]);
                             if (deleteHistory.length > 20) {
                                 deleteHistory.shift();
                             }
                             await delay(deleteWait);
+                            ig.game[map].deleteThingAt(destBlockPos.x, destBlockPos.y);
                         } else {
-                            dontPlace.add(\`\${scanBlockPos.x},\${scanBlockPos.y}\`);   //mark the block as not needing to be placed later
+                            dontPlace.add(\`\${scanBlockPos.x},\${scanBlockPos.y}\`);
                         }
                     } else {
                         if (destSectorIndex != deleteHistory[0][0]) {
@@ -613,37 +617,36 @@ async function scanArea() {
                         }
                         scanSectorIndex = deleteHistory[0][0];
                         destSectorIndex = deleteHistory[0][1];
+                        blockIndex = deleteHistory[0][2];
+                        currentBlock = deleteHistory[0][3];
                         destSectorX = destSectorData[destSectorIndex].x;
                         destSectorY = destSectorData[destSectorIndex].y;
-                        blockIndex = deleteHistory[0][2];
-                        currentBlock = destSectorData[destSectorIndex].ps[blockIndex];
-                        blockPos = {
-                            x: currentBlock[0] + 32 * destSectorX,
-                            y: currentBlock[1] + 32 * destSectorY
-                        };
+                        destBlockPos.x = currentBlock[0] + 32 * destSectorX;
+                        destBlockPos.y = currentBlock[1] + 32 * destSectorY;
                         ig.game.player.pos = {
-                            x: blockPos.x * 19,
-                            y: blockPos.y * 19
+                            x: destBlockPos.x * 19,
+                            y: destBlockPos.y * 19
                         };
                         if (waitForNextBlock) {
                             await delay(2000);
                             waitForNextBlock = false;
                         }
-                        ig.game[map][place]("59ff6c69c2928463131dbf69", 0, 0, {x: blockPos.x, y: blockPos.y}, null, !0);
+                        ig.game[map][place]("59ff6c69c2928463131dbf69", 0, 0, {x: destBlockPos.x, y: destBlockPos.y}, null, !0);
                         await delay(500);
                     }
                 }
             }
-            if (blockDeleted) {
-                await delay(2000);
-            }
             //place stage
-            if (typeof blockDataObj[sectorCoords[scanSectorIndex]] != 'undefined') {
+            if (typeof blockDataObj[sectorCoords[scanSectorIndex]] !== 'undefined') {
+                if (blockDeleted) {
+                    await delay(1000);
+                }
                 let xCoors = Object.keys(blockDataObj[sectorCoords[scanSectorIndex]]);
                 for (let xCoorIndex = 0; xCoorIndex < xCoors.length; xCoorIndex++) {
                     let xCoor = parseInt(xCoors[xCoorIndex], 10);
                     for (let blockIndex = 0; blockIndex < blockDataObj[sectorCoords[scanSectorIndex]][xCoors[xCoorIndex]].length; blockIndex++) {
-                        let yCoor = blockDataObj[sectorCoords[scanSectorIndex]][xCoors[xCoorIndex]][blockIndex][0];
+                        let currentBlock = blockDataObj[sectorCoords[scanSectorIndex]][xCoors[xCoorIndex]][blockIndex];
+                        let yCoor = currentBlock[0];
                         if (!dontPlace.has(\`\${xCoor},\${yCoor}\`)) {
                             if (!tired) {
                                 if (distanceToNextBlock(xCoor + offset.x, yCoor + offset.y) > 46) {
@@ -655,8 +658,8 @@ async function scanArea() {
                                     await delay(2000);
                                     waitForNextBlock = false;
                                 }
-                                ig.game[map][place](blockDataObj[sectorCoords[scanSectorIndex]][xCoors[xCoorIndex]][blockIndex][1], blockDataObj[sectorCoords[scanSectorIndex]][xCoors[xCoorIndex]][blockIndex][2], blockDataObj[sectorCoords[scanSectorIndex]][xCoors[xCoorIndex]][blockIndex][3], {x: xCoor + offset.x, y: yCoor + offset.y}, null, !0);
-                                placeHistory.push([scanSectorIndex, xCoorIndex, blockIndex, blockDataObj[sectorCoords[scanSectorIndex]][xCoors[xCoorIndex]][blockIndex]]);
+                                ig.game[map][place](currentBlock[1], currentBlock[2], currentBlock[3], {x: xCoor + offset.x, y: yCoor + offset.y}, null, !0);
+                                placeHistory.push([scanSectorIndex, xCoorIndex, blockIndex, currentBlock]);
                                 if (placeHistory.length > 20) {
                                     placeHistory.shift();
                                 }
@@ -665,9 +668,10 @@ async function scanArea() {
                                 scanSectorIndex = placeHistory[0][0];
                                 xCoorIndex = placeHistory[0][1];
                                 blockIndex = placeHistory[0][2];
+                                currentBlock = placeHistory[0][3];
                                 xCoors = Object.keys(blockDataObj[sectorCoords[scanSectorIndex]]);
                                 xCoor = parseInt(xCoors[xCoorIndex], 10);
-                                yCoor = blockDataObj[sectorCoords[scanSectorIndex]][xCoors[xCoorIndex]][blockIndex][0];
+                                yCoor = currentBlock[0];
                                 if (distanceToNextBlock(xCoor + offset.x, yCoor + offset.y) > 46) {
                                     waitForNextBlock = true;
                                 }
@@ -702,8 +706,8 @@ async function scanArea() {
         clearInterval(closeDialogInterval);
         ig.game.settings.glueWearable = false;
         getWearable(null);
-        await delay(1000);
         blockDataObj.length = 0;
+        await delay(1000);
         ig.game.alertDialog.open("<p>finished placing!</p>", true); 
     }
     
