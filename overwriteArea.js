@@ -257,12 +257,6 @@ async function scanArea() {
         ig.system.resize(window.innerWidth, window.innerHeight);
         ig.game.panelSet.init();
         ig.game.camera.init();
-        setInterval(() => {
-            playerPos = {
-                x: Math.round(ig.game.player.pos.x / 19),
-                y: Math.round(ig.game.player.pos.y / 19)
-            }
-        }, 0);
         await delay(100);
         if (typeof keyboard === 'undefined') {
             keyboard = Deobfuscator.object(ig.game,'isSpeaking',true);
@@ -383,7 +377,7 @@ async function scanArea() {
             ig.game.alertDialog.close();
         }
         distanceToNextBlock = function(blockX, blockY) {
-            return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
+            return Math.sqrt(Math.pow(Math.round(ig.game.player.pos.x / 19) - blockX, 2) + Math.pow(Math.round(ig.game.player.pos.y / 19) - blockY, 2));
         }
         binarySearch = function(array, value) {
             if (array.length == 0) {
@@ -582,17 +576,19 @@ async function scanArea() {
                             y: destBlockPos.y - offset.y
                         }
                         let sectorKey = \`\${scanSectorX},\${scanSectorY}\`;
+                        let colKey = \`\${scanBlockPos.x}\`;
+                        let scanBlockIndex;
                         if (typeof blockDataObj[sectorKey] === 'undefined'   //no blocks in scan sector
-                        || typeof blockDataObj[sectorKey][\`\${scanBlockPos.x}\`] === 'undefined'   //no blocks in col in scan sector
-                        || (index = binarySearch(blockDataObj[sectorKey][\`\${scanBlockPos.x}\`], scanBlockPos.y)) == -1   //no block in pos in scan sector
-                        || blockDataObj[sectorKey][\`\${scanBlockPos.x}\`][index][1] != destSectorData[destSectorIndex].iix[currentBlock[2]]) {     //block there but id is different
+                        || typeof blockDataObj[sectorKey][colKey] === 'undefined'   //no blocks in col in scan sector
+                        || (scanBlockIndex = binarySearch(blockDataObj[sectorKey][colKey], scanBlockPos.y)) == -1   //no block in pos in scan sector
+                        || blockDataObj[sectorKey][colKey][scanBlockIndex][1] != destSectorData[destSectorIndex].iix[currentBlock[2]]) {     //block there but id is different
                             if (blockIndex == 0) {
                                 waitForNextBlock = true;
                             }
                             ig.game.player.pos = {
                                 x: destBlockPos.x * 19, 
                                 y: destBlockPos.y * 19
-                            }
+                            };
                             if (waitForNextBlock) {
                                 if (distanceToNextBlock(destBlockPos.x, destBlockPos.y) > 32) {
                                     await delay(3000);
@@ -655,8 +651,10 @@ async function scanArea() {
                                 if (distanceToNextBlock(xCoor + offset.x, yCoor + offset.y) > 46) {
                                     waitForNextBlock = true;
                                 }
-                                ig.game.player.pos.x = (xCoor + offset.x) * 19;
-                                ig.game.player.pos.y = (yCoor + offset.y) * 19;
+                                ig.game.player.pos = {
+                                    x: (xCoor + offset.x) * 19,
+                                    y: (yCoor + offset.y) * 19
+                                };
                                 if (waitForNextBlock) {
                                     await delay(2000);
                                     waitForNextBlock = false;
@@ -678,8 +676,10 @@ async function scanArea() {
                                 if (distanceToNextBlock(xCoor + offset.x, yCoor + offset.y) > 46) {
                                     waitForNextBlock = true;
                                 }
-                                ig.game.player.pos.x = (xCoor + offset.x) * 19;
-                                ig.game.player.pos.y = (yCoor + offset.y) * 19;
+                                ig.game.player.pos = {
+                                    x: (xCoor + offset.x) * 19,
+                                    y: (yCoor + offset.y) * 19
+                                };
                                 if (waitForNextBlock) {
                                     await delay(2000);
                                     waitForNextBlock = false;
