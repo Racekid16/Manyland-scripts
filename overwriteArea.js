@@ -251,6 +251,9 @@ async function scanArea() {
         waitForNextBlock = false;
         alreadyGotInfoRift = false;
         alreadyGotPeaceParked = false;
+        numBlocksRightClicked = 0;
+        block1Coors = "";
+        block2Coors = "";
         startTime = Date.now();
         // code removing ad bar. credit to person who wrote that
         $('div').remove();
@@ -289,6 +292,12 @@ async function scanArea() {
             if (typeof selectedBlock !== 'undefined') {
                 if (selectedBlock.thing?.name !== null) {
                     consoleref.log(\`blockName: \${selectedBlock.thing.name}, mapLoc: {\${ig.game.itemContextMenu.maploc.x} , \${ig.game.itemContextMenu.maploc.y}}\`);
+                    numBlocksRightClicked++;
+                    if (numBlocksRightClicked % 2) {
+                        block1Coors = \`\${ig.game.itemContextMenu.maploc.x},\${ig.game.itemContextMenu.maploc.y}\`;
+                    } else {
+                        block2Coors = \`\${ig.game.itemContextMenu.maploc.x},\${ig.game.itemContextMenu.maploc.y}\`;
+                    }
                 }
             }
             return jQuery.ajax({
@@ -413,7 +422,27 @@ async function scanArea() {
             if (wantsPasteAll) {
                 overwriteArea()
             } else {
-                ig.game.alertDialog.open("<p>type javascript:paste_section() in the url to place the scanned blocks.</p>", true); 
+                ig.game.alertDialog.open("<p>press ctrl+q or type javascript:paste_section() in the url to place the scanned blocks.</p>", true); 
+                currentlyPressed = false;
+                function detectCtrlQ(event) {
+                    if (!currentlyPressed) {
+                        currentlyPressed = true;
+                        // function to check the detection
+                        event = event || window.event;  // Event object 'event'
+                        var key = event.which || event.keyCode; // Detecting keyCode
+                        
+                        // Detecting Ctrl
+                        var ctrl = event.ctrlKey ? event.ctrlKey : ((key === 17)
+                            ? true : false);
+                        
+                        if (key == 81 && ctrl) {
+                            paste_section();
+                            removeEventListener("keydown", detectCtrlQ);
+                        }
+                    }
+                    currentlyPressed = false;
+                }
+                addEventListener("keydown", detectCtrlQ);
             }
         }
     }
@@ -421,11 +450,13 @@ async function scanArea() {
     window.paste_section = async function() {
         //function for placing a specific part of the scan
         //in a <= x <= b and c <= y <= d
-        topLeftCoordsResponse = prompt("Specify the top left coordinates of the section to paste", "-100,-100").replaceAll(' ','').split(',').map(Number);
+        let suggestedCoors1 = block1Coors == "" ? "-100,-100" : block1Coors;
+        topLeftCoordsResponse = prompt("Specify the top left coordinates of the section to paste", suggestedCoors1).replaceAll(' ','').split(',').map(Number);
         let a = topLeftCoordsResponse[0] - offset.x;
         let c = topLeftCoordsResponse[1] - offset.y;
         await delay(500);
-        bottomRightCoordsResponse = prompt("Specify the bottom right coordinates of the section to paste", "100,100").replaceAll(' ','').split(',').map(Number);
+        let suggestedCoors2 = block2Coors == "" ? "100,100" : block2Coors;
+        bottomRightCoordsResponse = prompt("Specify the bottom right coordinates of the section to paste", suggestedCoors2).replaceAll(' ','').split(',').map(Number);
         let b = bottomRightCoordsResponse[0] - offset.x;
         let d = bottomRightCoordsResponse[1] - offset.y;
         scanTopLeftCoords.x = a;
