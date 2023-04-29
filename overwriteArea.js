@@ -468,14 +468,14 @@ async function scanArea() {
             scanTopLeftCoords.y = c;
             scanBottomRightCoords.x = b;
             scanBottomRightCoords.y = d;
-            if (b <= a || d <= c) {
-                ig.game.alertDialog.open("<p>invalid coordinates!</p>", true);
-            }
         } else {
             a = x1;
             b = x2;
             c = y1;
             d = y2;
+        }
+        if (b <= a || d <= c) {
+            ig.game.alertDialog.open("<p>invalid coordinates!</p>", true);
         }
         sectionStartSector = {
             x: Math.floor(a / 32), 
