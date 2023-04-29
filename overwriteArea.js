@@ -465,22 +465,24 @@ async function scanArea() {
             bottomRightCoordsResponse = prompt("Specify the bottom right coordinates of the section to paste", suggestedCoors2).replaceAll(' ','').split(',').map(Number);
             b = bottomRightCoordsResponse[0] - offset.x;
             d = bottomRightCoordsResponse[1] - offset.y;
-            scanTopLeftCoords.x = a;
-            scanTopLeftCoords.y = c;
-            scanBottomRightCoords.x = b;
-            scanBottomRightCoords.y = d;
         } else {
-            a = x1;
-            b = x2;
-            c = y1;
-            d = y2;
+            a = x1 - offset.x;
+            b = x2 - offset.x;
+            c = y1 - offset.y;
+            d = y2 - offset.y;
         }
         if (b <= a || d <= c) {
             ig.game.alertDialog.open("<p>invalid coordinates!</p>", true);
         }
         if (notify != true) {
             notifyFinished = false;
+        } else {
+            notifyFinished = true;
         }
+        scanTopLeftCoords.x = a;
+        scanTopLeftCoords.y = c;
+        scanBottomRightCoords.x = b;
+        scanBottomRightCoords.y = d;
         sectionStartSector = {
             x: Math.floor(a / 32), 
             y: Math.floor(c / 32)
