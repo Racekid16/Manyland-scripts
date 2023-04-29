@@ -244,6 +244,7 @@ async function scanArea() {
         placeHistory = [];
         deleteHistory = [];
         tired = false;
+        notifyFinished = true;
         callCount = 0; 
         placeWait = 35;
         deleteWait = 25;
@@ -447,7 +448,7 @@ async function scanArea() {
         }
     }
     
-    window.paste_section = async function(x1 = "invalid", y1 = "invalid", x2 = "invalid", y2 = "invalid") {
+    window.paste_section = async function(x1 = "invalid", y1 = "invalid", x2 = "invalid", y2 = "invalid", notify = true) {
         //function for placing a specific part of the scan
         //in a <= x <= b and c <= y <= d
         let a = 0;
@@ -476,6 +477,9 @@ async function scanArea() {
         }
         if (b <= a || d <= c) {
             ig.game.alertDialog.open("<p>invalid coordinates!</p>", true);
+        }
+        if (notify != true) {
+            notifyFinished = false;
         }
         sectionStartSector = {
             x: Math.floor(a / 32), 
@@ -753,7 +757,9 @@ async function scanArea() {
         getWearable(null);
         blockDataObj.length = 0;
         await delay(1000);
-        ig.game.alertDialog.open("<p>finished placing!</p>", true); 
+        if (notifyFinished) {
+            ig.game.alertDialog.open("<p>finished placing!</p>", true); 
+        }
     }
     
     init();`;
