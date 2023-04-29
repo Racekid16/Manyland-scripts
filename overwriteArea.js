@@ -447,24 +447,35 @@ async function scanArea() {
         }
     }
     
-    window.paste_section = async function() {
+    window.paste_section = async function(x1 = "invalid", y1 = "invalid", x2 = "invalid", y2 = "invalid") {
         //function for placing a specific part of the scan
         //in a <= x <= b and c <= y <= d
-        let suggestedCoors1 = block1Coors == "" ? "-100,-100" : block1Coors;
-        topLeftCoordsResponse = prompt("Specify the top left coordinates of the section to paste", suggestedCoors1).replaceAll(' ','').split(',').map(Number);
-        let a = topLeftCoordsResponse[0] - offset.x;
-        let c = topLeftCoordsResponse[1] - offset.y;
-        await delay(500);
-        let suggestedCoors2 = block2Coors == "" ? "100,100" : block2Coors;
-        bottomRightCoordsResponse = prompt("Specify the bottom right coordinates of the section to paste", suggestedCoors2).replaceAll(' ','').split(',').map(Number);
-        let b = bottomRightCoordsResponse[0] - offset.x;
-        let d = bottomRightCoordsResponse[1] - offset.y;
-        scanTopLeftCoords.x = a;
-        scanTopLeftCoords.y = c;
-        scanBottomRightCoords.x = b;
-        scanBottomRightCoords.y = d;
-        if (b <= a || d <= c) {
-            ig.game.alertDialog.open("<p>invalid coordinates!</p>", true);
+        let a = 0;
+        let b = 0;
+        let c = 0;
+        let d = 0;
+        if (x1 == "invalid" || y1 == "invalid" || x2 == "invalid" || y2 == "invalid") {
+            let suggestedCoors1 = block1Coors == "" ? "-100,-100" : block1Coors;
+            topLeftCoordsResponse = prompt("Specify the top left coordinates of the section to paste", suggestedCoors1).replaceAll(' ','').split(',').map(Number);
+            a = topLeftCoordsResponse[0] - offset.x;
+            c = topLeftCoordsResponse[1] - offset.y;
+            await delay(500);
+            let suggestedCoors2 = block2Coors == "" ? "100,100" : block2Coors;
+            bottomRightCoordsResponse = prompt("Specify the bottom right coordinates of the section to paste", suggestedCoors2).replaceAll(' ','').split(',').map(Number);
+            b = bottomRightCoordsResponse[0] - offset.x;
+            d = bottomRightCoordsResponse[1] - offset.y;
+            scanTopLeftCoords.x = a;
+            scanTopLeftCoords.y = c;
+            scanBottomRightCoords.x = b;
+            scanBottomRightCoords.y = d;
+            if (b <= a || d <= c) {
+                ig.game.alertDialog.open("<p>invalid coordinates!</p>", true);
+            }
+        } else {
+            a = x1;
+            b = x2;
+            c = y1;
+            d = y2;
         }
         sectionStartSector = {
             x: Math.floor(a / 32), 
