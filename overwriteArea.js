@@ -1,4 +1,4 @@
-/* script by Tommy3#1626
+/* script by Tommy3#1626 (formerly; now tommy.3)
 this script lets you copy blocks placed in a different area and place those blocks in your own area
 
 first specify the area you want to scan
@@ -189,7 +189,8 @@ async function scanArea() {
         ig.game.player.kill = function(){};
         map = Deobfuscator.object(ig.game,'queuePerformDelayMs',true);
         place = Deobfuscator.function(ig.game[map],'n:b||0,flip:c},d,!',true);
-        itemEquip = Deobfuscator.function(ig.game.attachmentManager,'(c);!e&&!a.O',true);
+        attachmentManager = Deobfuscator.object(ig.game,'slots',true);
+        itemEquip = Deobfuscator.function(ig.game[attachmentManager],'(c);!e&&!a.O',true);
         maxVelFunc = Deobfuscator.function(ig.game.player, '.x;this.maxVel.y=this.', true);
         collideFunc = Deobfuscator.function(ig.Entity,'&&b instanceof EntityCrumbling||b.',true);
         pushFunc = Deobfuscator.function(window.Item.prototype,'Item.prototype.BASE_TYPES[this.base]==Item.prototype.BASE_TYPES.PUSH',true);
@@ -246,8 +247,8 @@ async function scanArea() {
         tired = false;
         notifyFinished = true;
         callCount = 0; 
-        placeWait = 35;
-        deleteWait = 25;
+        placeWait = 50;
+        deleteWait = 50;
         initialPlaceWait = placeWait;
         waitForNextBlock = false;
         alreadyGotInfoRift = false;
@@ -307,11 +308,11 @@ async function scanArea() {
         }
         getWearable = async function(id) {
             if (typeof ig.game.player.attachments.w === 'undefined' || ig.game.player.attachments?.w === null) {
-                ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
+                ig.game[attachmentManager][itemEquip](ig.game.player,ig.game[attachmentManager].slots.WEARABLE,id,null,"STACKWEAR");
             } else if (ig.game.player.attachments.w.id != id) {
-                ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,null,null,"STACKWEAR");
+                ig.game[attachmentManager][itemEquip](ig.game.player,ig.game[attachmentManager].slots.WEARABLE,null,null,"STACKWEAR");
                 await delay(100);
-                ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
+                ig.game[attachmentManager][itemEquip](ig.game.player,ig.game[attachmentManager].slots.WEARABLE,id,null,"STACKWEAR");
             }
         };
         if (window.location.pathname == "/peacepark") {
@@ -386,8 +387,8 @@ async function scanArea() {
             ig.game.holderDialog.close();
             ig.game.alertDialog.close();
         }
-        distanceToNextBlock = function(blockX, blockY) {
-            return Math.sqrt(Math.pow(Math.round(ig.game.player.pos.x / 19) - blockX, 2) + Math.pow(Math.round(ig.game.player.pos.y / 19) - blockY, 2));
+        blockSectorDifferent = function(blockX, blockY) {
+            return Math.floor((Math.floor(ig.game.player.pos.x / 19)) / 32) != Math.floor(blockX / 32) || Math.floor((Math.floor(ig.game.player.pos.y / 19)) / 32) != Math.floor(blockY / 32);
         }
         binarySearch = function(array, value) {
             if (array.length == 0) {
@@ -547,7 +548,6 @@ async function scanArea() {
         closeDialogInterval = setInterval(closeDialogs, 3000);
         getWearable("63875dc578c24f5ad14dad37");
         ig.game.settings.glueWearable = true;
-        let currentBlock;
         let destSectorData;
         //scanSectorIndex intentionally global
         for (scanSectorIndex = startSectorIndex; scanSectorIndex < sectorCoords.length; scanSectorIndex++) {
@@ -611,6 +611,7 @@ async function scanArea() {
             let blockDeleted = false;
             let dontPlace = new Set();
             for (let destSectorIndex = 0; destSectorIndex != destSectorData.length; ++destSectorIndex) {
+                let currentBlock;
                 let destSectorX = destSectorData[destSectorIndex].x;
                 let destSectorY = destSectorData[destSectorIndex].y;
                 for (let blockIndex = 0; blockIndex < destSectorData[destSectorIndex].ps.length; blockIndex++) {
@@ -630,7 +631,7 @@ async function scanArea() {
                         || typeof blockDataObj[sectorKey][colKey] === 'undefined'   //no blocks in col in scan sector
                         || (scanBlockIndex = binarySearch(blockDataObj[sectorKey][colKey], scanBlockPos.y)) == -1   //no block in pos in scan sector
                         || blockDataObj[sectorKey][colKey][scanBlockIndex][1] != destSectorData[destSectorIndex].iix[currentBlock[2]]) {     //block there but id is different
-                            if (blockIndex == 0) {
+                            if (blockSectorDifferent(destBlockPos.x, destBlockPos.y)) {
                                 waitForNextBlock = true;
                             }
                             ig.game.player.pos = {
@@ -638,11 +639,7 @@ async function scanArea() {
                                 y: destBlockPos.y * 19
                             };
                             if (waitForNextBlock) {
-                                if (distanceToNextBlock(destBlockPos.x, destBlockPos.y) > 32) {
-                                    await delay(3000);
-                                } else {
-                                    await delay(1000);
-                                }
+                                await delay(3000);
                                 waitForNextBlock = false;
                             }
                             ig.game[map].deleteThingAt(destBlockPos.x, destBlockPos.y);
@@ -657,10 +654,8 @@ async function scanArea() {
                             dontPlace.add(\`\${scanBlockPos.x},\${scanBlockPos.y}\`);
                         }
                     } else {
-                        if (destSectorIndex != deleteHistory[0][0]) {
-                            if (distanceToNextBlock(currentBlock[0] + 32 * destSectorX, currentBlock[1] + destSectorY) > 46) {
-                                waitForNextBlock = true;
-                            }
+                        if (destSectorIndex != deleteHistory[0][1]) {
+                            waitForNextBlock = true;
                         }
                         scanSectorIndex = deleteHistory[0][0];
                         destSectorIndex = deleteHistory[0][1];
@@ -685,8 +680,9 @@ async function scanArea() {
             }
             //place stage
             if (typeof blockDataObj[sectorCoords[scanSectorIndex]] !== 'undefined') {
+                let currentBlock;
                 if (blockDeleted) {
-                    await delay(1000);
+                    await delay(2000);
                 }
                 let xCoors = Object.keys(blockDataObj[sectorCoords[scanSectorIndex]]);
                 for (let xCoorIndex = 0; xCoorIndex < xCoors.length; xCoorIndex++) {
@@ -696,7 +692,7 @@ async function scanArea() {
                         let yCoor = currentBlock[0];
                         if (!dontPlace.has(\`\${xCoor},\${yCoor}\`)) {
                             if (!tired) {
-                                if (distanceToNextBlock(xCoor + offset.x, yCoor + offset.y) > 46) {
+                                if (blockSectorDifferent(xCoor + offset.x, yCoor + offset.y)) {
                                     waitForNextBlock = true;
                                 }
                                 ig.game.player.pos = {
@@ -721,7 +717,7 @@ async function scanArea() {
                                 xCoors = Object.keys(blockDataObj[sectorCoords[scanSectorIndex]]);
                                 xCoor = parseInt(xCoors[xCoorIndex], 10);
                                 yCoor = currentBlock[0];
-                                if (distanceToNextBlock(xCoor + offset.x, yCoor + offset.y) > 46) {
+                                if (blockSectorDifferent(xCoor + offset.x, yCoor + offset.y)) {
                                     waitForNextBlock = true;
                                 }
                                 ig.game.player.pos = {
