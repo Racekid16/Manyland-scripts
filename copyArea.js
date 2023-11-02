@@ -23,22 +23,19 @@ async function copyArea() {
     sectorStartY = 0;
     differentStartX = false;
     differentStartY = false;
-    itemEquip = Deobfuscator.function(ig.game.attachmentManager,'(c);!e&&!a.O',true);
+    attachmentManager = Deobfuscator.object(ig.game,'slots',true);
+    itemEquip = Deobfuscator.function(ig.game[attachmentManager],'(c);!e&&!a.O',true);
     map = Deobfuscator.object(ig.game,'queuePerformDelayMs',true);
     place = Deobfuscator.function(ig.game[map],'n:b||0,flip:c},d,!',true);
     ig.game.errorManager.originalKickedFunc = ig.game.errorManager.kicked;
     tired = false;
     alreadyStopped = false;
     waitForNextBlock = false;
-    placeDelay = 35;
+    placeDelay = 50;
     callCount = 0;
     offset = {
         x: 0,
         y: 0
-    };
-    centerLoc = {
-        x: 15,
-        y: 15
     };
     placeHistory = [];
     sectorArray = [];
@@ -48,11 +45,11 @@ async function copyArea() {
     ig.game.player.kill = function(){};
     getWearable = async function(id) {
         if (typeof ig.game.player.attachments.w == 'undefined' || ig.game.player.attachments?.w === null) {
-            ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
+            ig.game[attachmentManager][itemEquip](ig.game.player,ig.game[attachmentManager].slots.WEARABLE,id,null,"STACKWEAR");
         } else if (ig.game.player.attachments.w.id != id) {
-            ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,null,null,"STACKWEAR");
+            ig.game[attachmentManager][itemEquip](ig.game.player,ig.game[attachmentManager].slots.WEARABLE,null,null,"STACKWEAR");
             await delay(100);
-            ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
+            ig.game[attachmentManager][itemEquip](ig.game.player,ig.game[attachmentManager].slots.WEARABLE,id,null,"STACKWEAR");
         }
     };
     ig.game.errorManager.kicked = function(a){
@@ -105,50 +102,44 @@ async function copyArea() {
     distanceToNextBlock = function(blockX, blockY) {
         return Math.sqrt(Math.pow(playerPos.x - blockX, 2) + Math.pow(playerPos.y - blockY, 2));
     };
-    area = prompt("Enter the name of the area whose bodies you'd like to inspect: ","3").replace(/\s+/g, '');
+    area = prompt("Enter the name of the area you'd like to copy: ","3").replace(/\s+/g, '');
     if (area == '1' || area == '2' || area == '3' || area == '4' || area == '5' || area == '6' || area == '7' || area == '8') {
         plane = 1;
         area = parseInt(area);
         areaId = area;
-        if (areaId == 1) {
-            centerLoc.x = 477;
-            centerLoc.y = -327;
-        } else if (areaId == 2 || areaId == 3 || areaId == 4) {
-            centerLoc.x = 0;
-            centerLoc.y = -50;
-        }
     } else if (area == 'inner ring') {
         plane = 2;
+        area = 1;
         areaId = 1;
-        centerLoc.x = 477;
-        centerLoc.y = -327;
     } else {
         plane = 0;
-        try {
-            areaData = await jQuery.ajax({
-                headers: {
-                    "cache-control": "no-cache"
-                },
-                url: "/j/i/",
-                type: "POST",
-                data: {
-                    urlName: area,
-                    buster: Date.now()
-                }
-            });
-        } catch (error) {
-            ig.game.player.say("invalid area name!");
-            return;
-        }
+    }
+    try {
+        areaData = await jQuery.ajax({
+            headers: {
+                "cache-control": "no-cache"
+            },
+            url: "/j/i/",
+            type: "POST",
+            data: {
+                urlName: area,
+                buster: Date.now()
+            }
+        });
+    } catch (error) {
+        ig.game.alertDialog.open("<p>invalid area name!</p>", true);
+        return;
+    }
+    if (plane == 0) {
         areaId = areaData.aid;
     }
-    offset.x = ig.game.areaCenterLocation.x - centerLoc.x;
-    offset.y = ig.game.areaCenterLocation.y - centerLoc.y;
+    offset.x = ig.game.areaCenterLocation.x - areaData.acl.x;
+    offset.y = ig.game.areaCenterLocation.y - areaData.acl.y;
     await delay(500);
     topLeftCoordsResponse = prompt("Specify the top left coordinates of the section to copy", "-100,-100").replaceAll(' ','').split(',').map(Number);
     topLeftCoords = {
-        x: topLeftCoordsResponse[0] + centerLoc.x,
-        y: topLeftCoordsResponse[1] + centerLoc.y
+        x: topLeftCoordsResponse[0] + areaData.acl.x,
+        y: topLeftCoordsResponse[1] + areaData.acl.y
     };
     startSector = {
         x: Math.floor(topLeftCoords.x / 32), 
@@ -157,15 +148,15 @@ async function copyArea() {
     await delay(500);
     bottomRightCoordsResponse = prompt("Specify the bottom right coordinates of the section to copy", "100,100").replaceAll(' ','').split(',').map(Number);
     bottomRightCoords = {
-        x: bottomRightCoordsResponse[0] + centerLoc.x,
-        y: bottomRightCoordsResponse[1] + centerLoc.y
+        x: bottomRightCoordsResponse[0] + areaData.acl.x,
+        y: bottomRightCoordsResponse[1] + areaData.acl.y
     };
     endSector = {
         x: Math.floor(bottomRightCoords.x / 32), 
         y: Math.floor(bottomRightCoords.y / 32)
     };
     if (startSector.x > endSector.x || startSector.y > endSector.y) {
-        ig.game.player.say("invalid coordinates!")
+        ig.game.alertDialog.open("<p>invalid coordinates!</p>", true);
         getWearable(null);
         ig.game.errorManager.kicked = ig.game.errorManager.originalKickedFunc;
         return;
@@ -300,7 +291,7 @@ async function copyArea() {
     ig.game.gravity = 800;
     getWearable(null);
     ig.game.errorManager.kicked = ig.game.errorManager.originalKickedFunc;
-    ig.game.player.say("finished copying!");    
+    ig.game.alertDialog.open("<p>finished copying!</p>", true); 
 }
 
 copyArea();
