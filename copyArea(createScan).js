@@ -140,10 +140,14 @@ async function scanArea() {
 /* 
 (async function() {
     setTimeout(async () => {
-        isAuto = true;
-        const code = await navigator.clipboard.readText();
-        const func = new Function(code);
-        func();
+        if (location.protocol === 'https:') {
+            isAuto = true;
+            const code = await navigator.clipboard.readText();
+            const func = new Function(code);
+            func();
+        } else {
+            ig.game.alertDialog.open("<p>must be in https for auto pasting!</p>", true); 
+        }
     }, 3000)
 })(); 
 */
@@ -160,7 +164,8 @@ async function init() {
     ig.game.player.kill = function(){};
     map = Deobfuscator.object(ig.game,'queuePerformDelayMs',true);
     place = Deobfuscator.function(ig.game[map],'n:b||0,flip:c},d,!',true);
-    itemEquip = Deobfuscator.function(ig.game.attachmentManager,'(c);!e&&!a.O',true);
+    attachmentManager = Deobfuscator.object(ig.game,'slots',true);
+    itemEquip = Deobfuscator.function(ig.game[attachmentManager],'(c);!e&&!a.O',true);
     maxVelFunc = Deobfuscator.function(ig.game.player, '.x;this.maxVel.y=this.', true);
     collideFunc = Deobfuscator.function(ig.Entity,'&&b instanceof EntityCrumbling||b.',true);
     pushFunc = Deobfuscator.function(window.Item.prototype,'Item.prototype.BASE_TYPES[this.base]==Item.prototype.BASE_TYPES.PUSH',true);
@@ -240,11 +245,11 @@ async function init() {
     }
     getWearable = async function(id) {
         if (typeof ig.game.player.attachments.w == 'undefined' || ig.game.player.attachments?.w === null) {
-            ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
+            ig.game[attachmentManager][itemEquip](ig.game.player,ig.game[attachmentManager].slots.WEARABLE,id,null,"STACKWEAR");
         } else if (ig.game.player.attachments.w.id != id) {
-            ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,null,null,"STACKWEAR");
+            ig.game[attachmentManager][itemEquip](ig.game.player,ig.game[attachmentManager].slots.WEARABLE,null,null,"STACKWEAR");
             await delay(100);
-            ig.game.attachmentManager[itemEquip](ig.game.player,ig.game.attachmentManager.slots.WEARABLE,id,null,"STACKWEAR");
+            ig.game[attachmentManager][itemEquip](ig.game.player,ig.game[attachmentManager].slots.WEARABLE,id,null,"STACKWEAR");
         }
     };
     //simulatedClick code stolen from stackOverflow
@@ -363,7 +368,7 @@ async function init() {
     }
 }
 
-async function paste_section() {
+window.paste_section = async function() {
     //function for placing a specific part of the scan
     //in a <= x <= b and c <= y <= d
     topLeftCoordsResponse = prompt("Specify the top left coordinates of the section to paste", "-100,-100").replaceAll(' ','').split(',').map(Number);
